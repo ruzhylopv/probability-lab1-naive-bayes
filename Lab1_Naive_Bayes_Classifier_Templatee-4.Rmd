@@ -208,6 +208,16 @@ head(bow)
 
 ## Data visualization
 
+```
+{r}
+word_freq <- tidy_text %>%
+  group_by(author, splitted) %>%
+  summarise(freq = n(), .groups = "drop") %>%
+  arrange(author, desc(freq))
+  
+  
+  
+```
 Each time you work with some data, you need to understand it before you
 start processing it. R has very powerful tools to make nice plots and
 visualization. Show what are the most common words for negative and
