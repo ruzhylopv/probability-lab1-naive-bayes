@@ -206,52 +206,6 @@ head(bow)
 
 ```
 
-
-
-```{r}
-#Converting tidy text into bag of words by class:
-
-word_counts <- tidy_text %>%
-  count(stemmed, name = "freq")
-word_counts <- word_counts %>% mutate(total_prob = freq/(sum(freq)))
-
-
-author_word_counts <- count(tidy_text, author, stemmed)
-author_word_counts <- group_by(author_word_counts, author) %>% mutate(p_word_given_author = (n/sum(n))) %>% ungroup()
-
-
-
-
-
-p_hp <- author_word_counts %>%
-  filter(author == "HP Lovecraft") %>%
-  select(stemmed, n, p_word_given_author) %>%
-  rename(p_hp_lovecraft = p_word_given_author) %>%
-  rename(n_hp_lovecraft = n)
-
-
-p_poe <- author_word_counts %>%
-  filter(author == "Edgar Alan Poe") %>%
-  select(stemmed, n, p_word_given_author) %>%
-  rename(p_edgar_alan_poe = p_word_given_author) %>%
-  rename(n_edgar_alan_poe = n)
-
-
-p_shelley <- author_word_counts %>%
-  filter(author == "Mary Wollstonecraft Shelley ") %>%
-  select(stemmed, n, p_word_given_author) %>%
-  rename(p_mary_wollstonecraft_helley = p_word_given_author) %>%
-  rename(n_mary_wollstonecraft_helley = n)
-
-
-word_counts <- word_counts %>%
-  left_join(p_poe, by="stemmed") %>%
-  left_join(p_shelley, by="stemmed") %>%
-  left_join(p_hp, by="stemmed")
-
-word_counts[is.na(word_counts)] <- 0
-
-```
 ## Data visualization
 
 Each time you work with some data, you need to understand it before you
@@ -326,7 +280,7 @@ naiveBayes <- setRefClass("naiveBayes",
                         probs_per_class[class] <- (p_class * p_observation_given_class)
                       }
                       
-                      #probs_per_class <- probs_per_class / sum(probs_per_class)
+                      probs_per_class <- probs_per_class / sum(probs_per_class)
                       
                       return(probs_per_class)
                   }
