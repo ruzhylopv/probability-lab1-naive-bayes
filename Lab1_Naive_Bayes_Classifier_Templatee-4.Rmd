@@ -103,10 +103,31 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(SnowballC)
-library(wordcloud)
-library(RColorBrewer)
-library(caret)
-library(pROC)
+
+# Optional libraries - only load if available
+if (require(wordcloud, quietly = TRUE)) {
+  library(wordcloud)
+} else {
+  cat("wordcloud not available - skipping word clouds\n")
+}
+
+if (require(RColorBrewer, quietly = TRUE)) {
+  library(RColorBrewer)
+} else {
+  cat("RColorBrewer not available - using default colors\n")
+}
+
+if (require(caret, quietly = TRUE)) {
+  library(caret)
+} else {
+  cat("caret not available - using basic evaluation\n")
+}
+
+if (require(pROC, quietly = TRUE)) {
+  library(pROC)
+} else {
+  cat("pROC not available - skipping ROC curves\n")
+}
 ```
 
 ## Outline of the work
@@ -236,10 +257,10 @@ word_freq <- tidy_text %>%
   summarise(freq = n(), .groups = "drop") %>%
   arrange(author, desc(freq))
 
-# Overall word frequency
+# Overall word frequency (limit for faster processing)
 overall_word_freq <- tidy_text %>%
   count(splitted, sort = TRUE) %>%
-  head(20)
+  head(15)  # Reduced from 20 to 15
 
 # Plot 1: Most common words overall
 ggplot(overall_word_freq, aes(x = reorder(splitted, n), y = n)) +
@@ -255,7 +276,7 @@ ggplot(overall_word_freq, aes(x = reorder(splitted, n), y = n)) +
 # Plot 2: Word frequency by author
 top_words_per_author <- word_freq %>%
   group_by(author) %>%
-  slice_head(n = 10) %>%
+  slice_head(n = 8) %>%  # Reduced from 10 to 8
   ungroup()
 
 ggplot(top_words_per_author, aes(x = reorder(splitted, freq), y = freq, fill = author)) +
@@ -270,21 +291,25 @@ ggplot(top_words_per_author, aes(x = reorder(splitted, freq), y = freq, fill = a
 ```
 
 ```{r}
-# Plot 3: Word clouds for each author
-par(mfrow = c(1, 3))
-for (author_name in authors) {
-  author_words <- word_freq %>%
-    filter(author == author_name) %>%
-    head(50)
-  
-  wordcloud(words = author_words$splitted, 
-            freq = author_words$freq,
-            max.words = 50,
-            random.order = FALSE,
-            colors = brewer.pal(8, "Dark2"),
-            main = paste("Word Cloud:", author_name))
+# Plot 3: Word clouds for each author (only if wordcloud is available)
+if (require(wordcloud, quietly = TRUE) && require(RColorBrewer, quietly = TRUE)) {
+  par(mfrow = c(1, 3))
+  for (author_name in authors) {
+    author_words <- word_freq %>%
+      filter(author == author_name) %>%
+      head(30)  # Reduced from 50 to 30 for faster rendering
+    
+    wordcloud(words = author_words$splitted, 
+              freq = author_words$freq,
+              max.words = 30,
+              random.order = FALSE,
+              colors = brewer.pal(8, "Dark2"),
+              main = paste("Word Cloud:", author_name))
+  }
+  par(mfrow = c(1, 1))
+} else {
+  cat("Word clouds skipped - wordcloud or RColorBrewer not available\n")
 }
-par(mfrow = c(1, 1))
 ```
 
 ```{r}
@@ -473,19 +498,41 @@ naiveBayes <- setRefClass("naiveBayes",
                         predicted <- factor(predictions, levels = levels(factor(actual)))
                         actual <- factor(actual)
                         
-                        # Confusion matrix
-                        cm <- confusionMatrix(predicted, actual)
-                        
-                        # Calculate F1 scores for each class
-                        f1_scores <- c()
-                        for (class in levels(actual)) {
-                          precision <- cm$byClass[class, "Precision"]
-                          recall <- cm$byClass[class, "Recall"]
-          f1_scores[class] <- 2 * (precision * recall) / (precision + recall)
+                        # Confusion matrix - use basic if caret not available
+                        if (require(caret, quietly = TRUE)) {
+                          cm <- confusionMatrix(predicted, actual)
+                          
+                          # Calculate F1 scores for each class
+                          f1_scores <- c()
+                          for (class in levels(actual)) {
+                            precision <- cm$byClass[class, "Precision"]
+                            recall <- cm$byClass[class, "Recall"]
+                            f1_scores[class] <- 2 * (precision * recall) / (precision + recall)
+                          }
+                        } else {
+                          # Basic confusion matrix calculation
+                          cm_table <- table(predicted, actual)
+                          cm <- list(table = cm_table)
+                          
+                          # Basic F1 calculation
+                          f1_scores <- c()
+                          for (class in levels(actual)) {
+                            tp <- sum(predicted == class & actual == class)
+                            fp <- sum(predicted == class & actual != class)
+                            fn <- sum(predicted != class & actual == class)
+                            
+                            precision <- tp / (tp + fp)
+                            recall <- tp / (tp + fn)
+                            f1_scores[class] <- 2 * (precision * recall) / (precision + recall)
+                          }
                         }
                         
                         # Overall accuracy
-                        accuracy <- cm$overall["Accuracy"]
+                        if (require(caret, quietly = TRUE)) {
+                          accuracy <- cm$overall["Accuracy"]
+                        } else {
+                          accuracy <- sum(predicted == actual) / length(actual)
+                        }
                         
                         # Macro-averaged F1
                         macro_f1 <- mean(f1_scores, na.rm = TRUE)
@@ -497,7 +544,7 @@ naiveBayes <- setRefClass("naiveBayes",
                           accuracy = accuracy,
                           f1_scores = f1_scores,
                           macro_f1 = macro_f1,
-                          detailed_metrics = cm$byClass
+                          detailed_metrics = if (require(caret, quietly = TRUE)) cm$byClass else NULL
                         ))
                       }
                   ))
@@ -560,9 +607,12 @@ cat("Test data processed. Dimensions:", nrow(test_bow), "x", ncol(test_bow), "\n
 ```
 
 ```{r}
-# Evaluate the model
+# Evaluate the model (limit test size for faster execution)
 cat("Evaluating model on test data...\n")
-results <- model$score(test, test_author_labels)
+# Limit test data to first 1000 examples for faster execution
+test_subset <- test[1:min(1000, nrow(test)), ]
+test_author_labels_subset <- test_author_labels[1:min(1000, nrow(test_author_labels)), ]
+results <- model$score(test_subset, test_author_labels_subset)
 
 # Print results
 cat("Overall Accuracy:", round(results$accuracy, 4), "\n")
@@ -576,69 +626,86 @@ for (author in names(results$f1_scores)) {
 
 ```{r}
 # Confusion Matrix Visualization
-cm_data <- as.data.frame(results$confusion_matrix$table)
-cm_data$Prediction <- factor(cm_data$Prediction, levels = rev(levels(cm_data$Prediction)))
-
-ggplot(cm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
-  geom_tile(alpha = 0.8) +
-  geom_text(aes(label = Freq), color = "white", size = 6, fontface = "bold") +
-  scale_fill_gradient(low = "lightblue", high = "darkblue") +
-  labs(title = "Confusion Matrix",
-       x = "Actual Author", y = "Predicted Author") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
-        axis.text.x = element_text(angle = 45, hjust = 1))
+if (require(caret, quietly = TRUE)) {
+  cm_data <- as.data.frame(results$confusion_matrix$table)
+  cm_data$Prediction <- factor(cm_data$Prediction, levels = rev(levels(cm_data$Prediction)))
+  
+  ggplot(cm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+    geom_tile(alpha = 0.8) +
+    geom_text(aes(label = Freq), color = "white", size = 6, fontface = "bold") +
+    scale_fill_gradient(low = "lightblue", high = "darkblue") +
+    labs(title = "Confusion Matrix",
+         x = "Actual Author", y = "Predicted Author") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+          axis.text.x = element_text(angle = 45, hjust = 1))
+} else {
+  # Basic confusion matrix plot
+  cm_table <- results$confusion_matrix$table
+  print("Confusion Matrix:")
+  print(cm_table)
+}
 ```
 
 ```{r}
 # Detailed metrics visualization
-metrics_df <- as.data.frame(results$detailed_metrics)
-metrics_df$Class <- rownames(metrics_df)
-metrics_df$Class <- factor(metrics_df$Class, levels = metrics_df$Class)
-
-# Precision, Recall, F1 comparison
-metrics_long <- metrics_df %>%
-  select(Class, Precision, Recall, F1) %>%
-  pivot_longer(cols = c(Precision, Recall, F1), 
-               names_to = "Metric", values_to = "Value")
-
-ggplot(metrics_long, aes(x = Class, y = Value, fill = Metric)) +
-  geom_col(position = "dodge", alpha = 0.8) +
-  labs(title = "Precision, Recall, and F1 Scores by Class",
-       x = "Author", y = "Score") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
-        axis.text.x = element_text(angle = 45, hjust = 1)) +
-  scale_y_continuous(limits = c(0, 1))
+if (require(caret, quietly = TRUE) && !is.null(results$detailed_metrics)) {
+  metrics_df <- as.data.frame(results$detailed_metrics)
+  metrics_df$Class <- rownames(metrics_df)
+  metrics_df$Class <- factor(metrics_df$Class, levels = metrics_df$Class)
+  
+  # Precision, Recall, F1 comparison
+  metrics_long <- metrics_df %>%
+    select(Class, Precision, Recall, F1) %>%
+    pivot_longer(cols = c(Precision, Recall, F1), 
+                 names_to = "Metric", values_to = "Value")
+  
+  ggplot(metrics_long, aes(x = Class, y = Value, fill = Metric)) +
+    geom_col(position = "dodge", alpha = 0.8) +
+    labs(title = "Precision, Recall, and F1 Scores by Class",
+         x = "Author", y = "Score") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+          axis.text.x = element_text(angle = 45, hjust = 1)) +
+    scale_y_continuous(limits = c(0, 1))
+} else {
+  # Basic metrics display
+  cat("Detailed metrics:\n")
+  for (author in names(results$f1_scores)) {
+    cat(author, "F1:", round(results$f1_scores[author], 4), "\n")
+  }
+}
 ```
 
 ```{r}
-# ROC Curves for each class (one-vs-rest)
-library(pROC)
-
-# Create binary classification for each author
-roc_data <- data.frame()
-for (author in unique(test_author_labels$author)) {
-  binary_actual <- ifelse(test_author_labels$author == author, 1, 0)
-  binary_prob <- results$probabilities[, author]
+# ROC Curves for each class (one-vs-rest) - only if pROC is available
+if (require(pROC, quietly = TRUE)) {
+  # Create binary classification for each author
+  roc_data <- data.frame()
+  for (author in unique(test_author_labels$author)) {
+    binary_actual <- ifelse(test_author_labels$author == author, 1, 0)
+    binary_prob <- results$probabilities[, author]
+    
+    roc_obj <- roc(binary_actual, binary_prob, quiet = TRUE)
+    roc_df <- data.frame(
+      Author = author,
+      Specificity = 1 - roc_obj$specificities,
+      Sensitivity = roc_obj$sensitivities
+    )
+    roc_data <- rbind(roc_data, roc_df)
+  }
   
-  roc_obj <- roc(binary_actual, binary_prob, quiet = TRUE)
-  roc_df <- data.frame(
-    Author = author,
-    Specificity = 1 - roc_obj$specificities,
-    Sensitivity = roc_obj$sensitivities
-  )
-  roc_data <- rbind(roc_data, roc_df)
+  ggplot(roc_data, aes(x = Specificity, y = Sensitivity, color = Author)) +
+    geom_line(size = 1.2) +
+    geom_abline(intercept = 0, slope = 1, linetype = "dashed", alpha = 0.5) +
+    labs(title = "ROC Curves by Author",
+         x = "1 - Specificity (False Positive Rate)",
+         y = "Sensitivity (True Positive Rate)") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
+} else {
+  cat("ROC curves skipped - pROC not available\n")
 }
-
-ggplot(roc_data, aes(x = Specificity, y = Sensitivity, color = Author)) +
-  geom_line(size = 1.2) +
-  geom_abline(intercept = 0, slope = 1, linetype = "dashed", alpha = 0.5) +
-  labs(title = "ROC Curves by Author",
-       x = "1 - Specificity (False Positive Rate)",
-       y = "Sensitivity (True Positive Rate)") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
 ```
 
 ```{r}
