@@ -177,12 +177,12 @@ list.files("data/0-authors")
 test_path <- "data/0-authors/test.csv"
 train_path <- "data/0-authors/train.csv"
 
-stop_words <- read_file("stop_words.txt")
-# https://stackoverflow.com/questions/27195912/why-does-strsplit-return-a-list
-splitted_stop_words <- strsplit(stop_words, split='\n')
-splitted_stop_words <- splitted_stop_words[[1]]
-# splitted_stop_words
-# head(splitted_stop_words)
+# Read stop words properly
+stop_words <- readLines("stop_words.txt")
+# Remove empty lines and trim whitespace
+splitted_stop_words <<- trimws(stop_words[stop_words != ""])
+cat("Loaded", length(splitted_stop_words), "stop words\n")
+cat("First 10 stop words:", head(splitted_stop_words, 10), "\n")
 ```
 ```{r}
 train <-  read.csv(file = train_path, stringsAsFactors = FALSE)
@@ -192,9 +192,14 @@ test <-  read.csv(file = test_path, stringsAsFactors = FALSE)
 ```{r}
 # Data preprocessing: tokenization and stop word removal
 cat("Processing training data...\n")
+cat("Before filtering - total words:", nrow(unnest_tokens(train, "splitted", 'text', token="words")), "\n")
+
 tidy_text <- unnest_tokens(train, "splitted", 'text', token="words") %>%
     filter(!splitted %in% splitted_stop_words) %>%
     filter(nchar(splitted) > 2)  # Remove very short words
+
+cat("After filtering - remaining words:", nrow(tidy_text), "\n")
+cat("Stop words removed:", nrow(unnest_tokens(train, "splitted", 'text', token="words")) - nrow(tidy_text), "\n")
 
 # Apply stemming to reduce vocabulary size
 tidy_text <- tidy_text %>% 
@@ -377,12 +382,14 @@ naiveBayes <- setRefClass("naiveBayes",
                     # (binary classification task)
                     fit = function(X, y)
                     {
-                      X <- X[order(X$id...1), ]
+                      # Fix column name issue - use the correct column name
+                      id_col <- colnames(X)[1]  # First column should be the ID
+                      X <- X[order(X[[id_col]]), ]
                       y <- y[order(y$id), ]
                       
-                      stopifnot(all(X$id...1 == y$id))
+                      stopifnot(all(X[[id_col]] == y$id))
                       
-                      vocabulary <<- setdiff(colnames(X), "id...1")
+                      vocabulary <<- setdiff(colnames(X), id_col)
                       class_counts <- table(y$author)
                       total_words_in_X <<- sum(colSums(X[, 2:ncol(X)]))
 
@@ -584,6 +591,9 @@ test_tidy <- unnest_tokens(test, "splitted", 'text', token="words") %>%
     filter(!splitted %in% splitted_stop_words) %>%
     filter(nchar(splitted) > 2) %>%
     mutate(stemmed = wordStem(splitted, language="en"))
+
+cat("Test data - words before filtering:", nrow(unnest_tokens(test, "splitted", 'text', token="words")), "\n")
+cat("Test data - words after filtering:", nrow(test_tidy), "\n")
 
 # Create test bag of words
 test_bow <- test_tidy %>% 
