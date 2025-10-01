@@ -505,16 +505,41 @@ naiveBayes <- setRefClass("naiveBayes",
                         predicted <- factor(predictions, levels = levels(factor(actual)))
                         actual <- factor(actual)
                         
+                        cat("Actual classes:", levels(actual), "\n")
+                        cat("Predicted classes:", levels(predicted), "\n")
+                        
                         # Confusion matrix - use basic if caret not available
                         if (require(caret, quietly = TRUE)) {
                           cm <- confusionMatrix(predicted, actual)
                           
-                          # Calculate F1 scores for each class
+                          # Calculate F1 scores for each class with error handling
                           f1_scores <- c()
                           for (class in levels(actual)) {
-                            precision <- cm$byClass[class, "Precision"]
-                            recall <- cm$byClass[class, "Recall"]
-                            f1_scores[class] <- 2 * (precision * recall) / (precision + recall)
+                            tryCatch({
+                              # Check if byClass exists and has the right structure
+                              if (!is.null(cm$byClass) && class %in% rownames(cm$byClass)) {
+                                precision <- cm$byClass[class, "Precision"]
+                                recall <- cm$byClass[class, "Recall"]
+                              } else {
+                                # Fallback to manual calculation
+                                tp <- sum(predicted == class & actual == class)
+                                fp <- sum(predicted == class & actual != class)
+                                fn <- sum(predicted != class & actual == class)
+                                
+                                precision <- tp / (tp + fp)
+                                recall <- tp / (tp + fn)
+                              }
+                              f1_scores[class] <- 2 * (precision * recall) / (precision + recall)
+                            }, error = function(e) {
+                              # Manual calculation if caret fails
+                              tp <- sum(predicted == class & actual == class)
+                              fp <- sum(predicted == class & actual != class)
+                              fn <- sum(predicted != class & actual == class)
+                              
+                              precision <- tp / (tp + fp)
+                              recall <- tp / (tp + fn)
+                              f1_scores[class] <<- 2 * (precision * recall) / (precision + recall)
+                            })
                           }
                         } else {
                           # Basic confusion matrix calculation
@@ -535,7 +560,7 @@ naiveBayes <- setRefClass("naiveBayes",
                         }
                         
                         # Overall accuracy
-                        if (require(caret, quietly = TRUE)) {
+                        if (require(caret, quietly = TRUE) && !is.null(cm$overall)) {
                           accuracy <- cm$overall["Accuracy"]
                         } else {
                           accuracy <- sum(predicted == actual) / length(actual)
@@ -551,7 +576,7 @@ naiveBayes <- setRefClass("naiveBayes",
                           accuracy = accuracy,
                           f1_scores = f1_scores,
                           macro_f1 = macro_f1,
-                          detailed_metrics = if (require(caret, quietly = TRUE)) cm$byClass else NULL
+                          detailed_metrics = if (require(caret, quietly = TRUE) && !is.null(cm$byClass)) cm$byClass else NULL
                         ))
                       }
                   ))
