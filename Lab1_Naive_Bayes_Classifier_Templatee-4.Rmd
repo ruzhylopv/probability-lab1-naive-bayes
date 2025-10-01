@@ -324,8 +324,6 @@ naiveBayes <- setRefClass("naiveBayes",
 
 model = naiveBayes()
 model$fit(X=bow, y=author_labels)
-#model$predict("Hello my name is pavlo what about you?")
-
 ```
 
 ## Measure effectiveness of your classifier
