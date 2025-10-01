@@ -508,55 +508,54 @@ naiveBayes <- setRefClass("naiveBayes",
                         cat("Actual classes:", levels(actual), "\n")
                         cat("Predicted classes:", levels(predicted), "\n")
                         
-                        # Confusion matrix - use basic if caret not available
-                        if (require(caret, quietly = TRUE)) {
-                          cm <- confusionMatrix(predicted, actual)
+                        # Always use manual calculation to avoid caret issues
+                        cm_table <- table(predicted, actual)
+                        cm <- list(table = cm_table)
+                        
+                        # Manual F1 calculation for all classes
+                        f1_scores <- c()
+                        precision_scores <- c()
+                        recall_scores <- c()
+                        
+                        for (class in levels(actual)) {
+                          tp <- sum(predicted == class & actual == class)
+                          fp <- sum(predicted == class & actual != class)
+                          fn <- sum(predicted != class & actual == class)
                           
-                          # Calculate F1 scores for each class with error handling
-                          f1_scores <- c()
-                          for (class in levels(actual)) {
-                            tryCatch({
-                              # Check if byClass exists and has the right structure
-                              if (!is.null(cm$byClass) && class %in% rownames(cm$byClass)) {
-                                precision <- cm$byClass[class, "Precision"]
-                                recall <- cm$byClass[class, "Recall"]
-                              } else {
-                                # Fallback to manual calculation
-                                tp <- sum(predicted == class & actual == class)
-                                fp <- sum(predicted == class & actual != class)
-                                fn <- sum(predicted != class & actual == class)
-                                
-                                precision <- tp / (tp + fp)
-                                recall <- tp / (tp + fn)
-                              }
-                              f1_scores[class] <- 2 * (precision * recall) / (precision + recall)
-                            }, error = function(e) {
-                              # Manual calculation if caret fails
-                              tp <- sum(predicted == class & actual == class)
-                              fp <- sum(predicted == class & actual != class)
-                              fn <- sum(predicted != class & actual == class)
-                              
-                              precision <- tp / (tp + fp)
-                              recall <- tp / (tp + fn)
-                              f1_scores[class] <<- 2 * (precision * recall) / (precision + recall)
-                            })
-                          }
-                        } else {
-                          # Basic confusion matrix calculation
-                          cm_table <- table(predicted, actual)
-                          cm <- list(table = cm_table)
-                          
-                          # Basic F1 calculation
-                          f1_scores <- c()
-                          for (class in levels(actual)) {
-                            tp <- sum(predicted == class & actual == class)
-                            fp <- sum(predicted == class & actual != class)
-                            fn <- sum(predicted != class & actual == class)
-                            
+                          # Handle division by zero
+                          if (tp + fp == 0) {
+                            precision <- 0
+                          } else {
                             precision <- tp / (tp + fp)
-                            recall <- tp / (tp + fn)
-                            f1_scores[class] <- 2 * (precision * recall) / (precision + recall)
                           }
+                          
+                          if (tp + fn == 0) {
+                            recall <- 0
+                          } else {
+                            recall <- tp / (tp + fn)
+                          }
+                          
+                          if (precision + recall == 0) {
+                            f1 <- 0
+                          } else {
+                            f1 <- 2 * (precision * recall) / (precision + recall)
+                          }
+                          
+                          f1_scores[class] <- f1
+                          precision_scores[class] <- precision
+                          recall_scores[class] <- recall
+                        }
+                        
+                        # Try to get caret metrics if available, but don't rely on them
+                        if (require(caret, quietly = TRUE)) {
+                          tryCatch({
+                            cm_caret <- confusionMatrix(predicted, actual)
+                            if (!is.null(cm_caret$overall)) {
+                              cm$overall <- cm_caret$overall
+                            }
+                          }, error = function(e) {
+                            cat("Caret metrics not available, using manual calculation\n")
+                          })
                         }
                         
                         # Overall accuracy
@@ -575,8 +574,16 @@ naiveBayes <- setRefClass("naiveBayes",
                           confusion_matrix = cm,
                           accuracy = accuracy,
                           f1_scores = f1_scores,
+                          precision_scores = precision_scores,
+                          recall_scores = recall_scores,
                           macro_f1 = macro_f1,
-                          detailed_metrics = if (require(caret, quietly = TRUE) && !is.null(cm$byClass)) cm$byClass else NULL
+                          detailed_metrics = data.frame(
+                            Class = names(f1_scores),
+                            Precision = precision_scores,
+                            Recall = recall_scores,
+                            F1 = f1_scores,
+                            row.names = NULL
+                          )
                         ))
                       }
                   ))
@@ -684,9 +691,8 @@ if (require(caret, quietly = TRUE)) {
 
 ```{r}
 # Detailed metrics visualization
-if (require(caret, quietly = TRUE) && !is.null(results$detailed_metrics)) {
-  metrics_df <- as.data.frame(results$detailed_metrics)
-  metrics_df$Class <- rownames(metrics_df)
+if (!is.null(results$detailed_metrics)) {
+  metrics_df <- results$detailed_metrics
   metrics_df$Class <- factor(metrics_df$Class, levels = metrics_df$Class)
   
   # Precision, Recall, F1 comparison
