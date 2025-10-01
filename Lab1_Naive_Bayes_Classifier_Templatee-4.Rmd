@@ -251,26 +251,29 @@ naiveBayes <- setRefClass("naiveBayes",
                     # (binary classification task)
                     fit = function(X, y)
                     {
-                      vocabulary <<- colnames(X)
+                      X <- X[order(X$id...1), ]
+                      y <- y[order(y$id), ]
+                      
+                      stopifnot(all(X$id...1 == y$id))
+                      
+                      vocabulary <<- setdiff(colnames(X), "id...1")
                       class_counts <- table(y$author)
-                      total_words_in_X <<- sum(colSums(bow[, 2:ncol(bow)]))
+                      total_words_in_X <<- sum(colSums(X[, 2:ncol(X)]))
 
    
                       class_priors <<- class_counts / sum(class_counts)
                       word_probabilities <<- list()
                         for (class in names(class_counts)) {
-                          # Subset X where y == class
+                          # subset X where y == class
                           X_class <- X[y$author == class, , drop = FALSE]
-                          
-              
-                          # Sum counts of each word in that class
+                          # sum counts of each word in that class
                           word_counts <- colSums(X_class[, 2:ncol(X_class)])
                           
-                          # Apply Laplace smoothing: +1 to each word count
+                          # add +1 to each count to avoid multiplying by 0
                           word_counts <- word_counts + 1
-                          
-                          # Normalize by total count + vocab size
                           total_count <- sum(word_counts)
+                          
+
                           probs <- word_counts / total_count
                           
                           word_probabilities[[class]] <<- probs
@@ -284,34 +287,25 @@ naiveBayes <- setRefClass("naiveBayes",
                       predict = function(message) {
                         message_df <- data.frame(text = message, stringsAsFactors = FALSE)
                         tidy_message <- message_df %>%
-                          unnest_tokens(splitted, text, token = "words")
-                        
+                          unnest_tokens(splitted, text, token = "words") %>%
+                          filter(!(splitted %in% splitted_stop_words)) %>%
+                          filter((splitted %in% vocabulary))
                         probs_per_class <- c()
-                        p_observation <- 1
-                        for (word in tidy_message$splitted) {
-                            if (word %in% vocabulary) {
-                              p_observation <- p_observation * (sum(bow[, word]/total_words_in_X))
-                              
-                            }
-                          
-                        }
                         
                         for (class in names(class_priors)) {
                           p_class <- class_priors[class]
                           p_observation_given_class <- 1
                           
                           for (word in tidy_message$splitted) {
-                            
                             p_w_given_class <- word_probabilities[[class]][word]
-                            if (is.na(p_w_given_class)) p_w_given_class <- 1e-6
                             p_observation_given_class <- p_observation_given_class * p_w_given_class
                           }
                           
-                          probs_per_class[class] <- (p_class * p_observation_given_class)
+                          probs_per_class[class] <- (p_class * (p_observation_given_class))
                         }
                         
-                        probs_per_class <- probs_per_class / p_observation
                         predicted_class <- names(which.max(probs_per_class))
+                        print(probs_per_class)
                         return(predicted_class)
 
                     }
@@ -322,10 +316,10 @@ naiveBayes <- setRefClass("naiveBayes",
                                       # look at f1 score or precision and recall
                                       # visualize them 
                                       # try how well your model generalizes to real world data! 
-                                      score = function(X_test, y_test)
-                                      {
-                                           # TODO
-                                      }
+                      score = function(X_test, y_test)
+                      {
+                           # TODO
+                      }
                   ))
 
 model = naiveBayes()
