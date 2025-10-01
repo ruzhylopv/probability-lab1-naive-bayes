@@ -102,8 +102,11 @@ library(readr)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-
 library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+library(caret)
+library(pROC)
 ```
 
 ## Outline of the work
@@ -166,62 +169,160 @@ test <-  read.csv(file = test_path, stringsAsFactors = FALSE)
 ```
 
 ```{r}
-# note the power functional features of R bring us! 
+# Data preprocessing: tokenization and stop word removal
+cat("Processing training data...\n")
+tidy_text <- unnest_tokens(train, "splitted", 'text', token="words") %>%
+    filter(!splitted %in% splitted_stop_words) %>%
+    filter(nchar(splitted) > 2)  # Remove very short words
 
+# Apply stemming to reduce vocabulary size
+tidy_text <- tidy_text %>% 
+    mutate(stemmed = wordStem(splitted, language="en"))
 
-    # The vocabulary is now 22212 unique words long!
-    # That is why we decided to apply the stemming algorithm.
-tidy_text <- unnest_tokens(train[, ], "splitted", 'text', token="words") %>%
-    filter(!splitted %in% splitted_stop_words)
-    len_of_vocab_before_stemming <- length(unique(tidy_text$splitted))
+len_of_vocab_before_stemming <- length(unique(tidy_text$splitted))
+len_of_vocab_after_stemming <- length(unique(tidy_text$stemmed))
 
+cat("Vocabulary before stemming:", len_of_vocab_before_stemming, "\n")
+cat("Vocabulary after stemming:", len_of_vocab_after_stemming, "\n")
+cat("Vocabulary reduction:", len_of_vocab_before_stemming - len_of_vocab_after_stemming, "\n")
 
-#    tidy_text <- tidy_text %>% mutate(stemmed = wordStem(splitted, #language="en"))
-#    len_of_vocab_after_stemming <- length(unique(tidy_text$stemmed))
+# Use stemmed words for further processing
+tidy_text$splitted <- tidy_text$stemmed
+tidy_text <- tidy_text %>% select(-stemmed)
 
-#    cat("Vocabulary before stemming:", len_of_vocab_before_stemming, "\n")
-#    cat("Vocabulary after stemming:", len_of_vocab_after_stemming, "\n")
-#    cat("The decrease:", len_of_vocab_before_stemming - #len_of_vocab_after_stemming, "\n")
 head(tidy_text)
 ```
 The vocabulary without using the stemming algorithm (See https://machinelearningmastery.com/gentle-introduction-bag-words-model/) \\
 was 22211 words. Now we reduced it to 13479 using SnowballC library stemming algorithm
 ```{r}
-#Converting each message into bag of words:
+# Converting each message into bag of words:
 vocabulary <- unique(tidy_text$splitted)
 authors <- unique(tidy_text$author)
 
-bow <- tidy_text %>% count(id, splitted)
-author_labels <- tidy_text %>%
-  select(id, author) %>%
-  distinct()
-bow <- bow %>%
+# Create bag of words representation
+bow <- tidy_text %>% 
+  count(id, splitted) %>%
   pivot_wider(
     names_from = splitted,
     values_from = n,
     values_fill = list(n = 0),
-    names_repair="unique"
+    names_repair = "unique"
   )
-head(bow)
 
+# Get author labels for each document
+author_labels <- tidy_text %>%
+  select(id, author) %>%
+  distinct() %>%
+  arrange(id)
+
+# Ensure bow and author_labels are aligned
+bow <- bow %>% arrange(id)
+author_labels <- author_labels %>% arrange(id)
+
+cat("Bag of words dimensions:", nrow(bow), "x", ncol(bow), "\n")
+cat("Number of unique words:", length(vocabulary), "\n")
+cat("Number of authors:", length(authors), "\n")
+cat("Authors:", paste(authors, collapse = ", "), "\n")
+
+head(bow[, 1:10])  # Show first 10 columns
 ```
 
 ## Data visualization
 
-```
-{r}
+```{r}
+# Word frequency analysis by author
 word_freq <- tidy_text %>%
   group_by(author, splitted) %>%
   summarise(freq = n(), .groups = "drop") %>%
   arrange(author, desc(freq))
-  
-  
-  
+
+# Overall word frequency
+overall_word_freq <- tidy_text %>%
+  count(splitted, sort = TRUE) %>%
+  head(20)
+
+# Plot 1: Most common words overall
+ggplot(overall_word_freq, aes(x = reorder(splitted, n), y = n)) +
+  geom_col(fill = "steelblue", alpha = 0.7) +
+  coord_flip() +
+  labs(title = "Top 20 Most Common Words in Training Data",
+       x = "Words", y = "Frequency") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
 ```
-Each time you work with some data, you need to understand it before you
-start processing it. R has very powerful tools to make nice plots and
-visualization. Show what are the most common words for negative and
-positive examples as a histogram, word cloud etc. Be creative!
+
+```{r}
+# Plot 2: Word frequency by author
+top_words_per_author <- word_freq %>%
+  group_by(author) %>%
+  slice_head(n = 10) %>%
+  ungroup()
+
+ggplot(top_words_per_author, aes(x = reorder(splitted, freq), y = freq, fill = author)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  facet_wrap(~author, scales = "free_y") +
+  labs(title = "Top 10 Words by Author",
+       x = "Words", y = "Frequency") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        legend.position = "none")
+```
+
+```{r}
+# Plot 3: Word clouds for each author
+par(mfrow = c(1, 3))
+for (author_name in authors) {
+  author_words <- word_freq %>%
+    filter(author == author_name) %>%
+    head(50)
+  
+  wordcloud(words = author_words$splitted, 
+            freq = author_words$freq,
+            max.words = 50,
+            random.order = FALSE,
+            colors = brewer.pal(8, "Dark2"),
+            main = paste("Word Cloud:", author_name))
+}
+par(mfrow = c(1, 1))
+```
+
+```{r}
+# Plot 4: Document length distribution by author
+doc_lengths <- tidy_text %>%
+  group_by(id, author) %>%
+  summarise(word_count = n(), .groups = "drop")
+
+ggplot(doc_lengths, aes(x = author, y = word_count, fill = author)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Document Length Distribution by Author",
+       x = "Author", y = "Word Count") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        legend.position = "none") +
+  scale_y_log10()
+```
+
+```{r}
+# Plot 5: Class distribution
+class_dist <- table(author_labels$author)
+class_dist_df <- data.frame(
+  Author = names(class_dist),
+  Count = as.numeric(class_dist),
+  Percentage = round(as.numeric(class_dist) / sum(class_dist) * 100, 1)
+)
+
+ggplot(class_dist_df, aes(x = Author, y = Count, fill = Author)) +
+  geom_col(alpha = 0.8) +
+  geom_text(aes(label = paste0(Count, "\n(", Percentage, "%)")), 
+            vjust = -0.5, size = 4) +
+  labs(title = "Class Distribution in Training Data",
+       x = "Author", y = "Number of Documents") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        legend.position = "none")
+```
 
 ## Classifier implementation
 
@@ -289,25 +390,36 @@ naiveBayes <- setRefClass("naiveBayes",
                         tidy_message <- message_df %>%
                           unnest_tokens(splitted, text, token = "words") %>%
                           filter(!(splitted %in% splitted_stop_words)) %>%
-                          filter((splitted %in% vocabulary))
+                          filter(nchar(splitted) > 2) %>%
+                          mutate(stemmed = wordStem(splitted, language="en")) %>%
+                          filter(stemmed %in% vocabulary)
+                        
+                        if (nrow(tidy_message) == 0) {
+                          # If no words found, return most common class
+                          return(names(which.max(class_priors)))
+                        }
+                        
                         probs_per_class <- c()
                         
                         for (class in names(class_priors)) {
                           p_class <- class_priors[class]
                           p_observation_given_class <- 1
                           
-                          for (word in tidy_message$splitted) {
-                            p_w_given_class <- word_probabilities[[class]][word]
+                          for (word in tidy_message$stemmed) {
+                            if (word %in% names(word_probabilities[[class]])) {
+                              p_w_given_class <- word_probabilities[[class]][word]
+                            } else {
+                              # Laplace smoothing for unseen words
+                              p_w_given_class <- 1 / (total_words_in_X + length(vocabulary))
+                            }
                             p_observation_given_class <- p_observation_given_class * p_w_given_class
                           }
                           
-                          probs_per_class[class] <- (p_class * (p_observation_given_class))
+                          probs_per_class[class] <- (p_class * p_observation_given_class)
                         }
                         
                         predicted_class <- names(which.max(probs_per_class))
-                        print(probs_per_class)
                         return(predicted_class)
-
                     }
                   ,
                                       
@@ -318,68 +430,295 @@ naiveBayes <- setRefClass("naiveBayes",
                                       # try how well your model generalizes to real world data! 
                       score = function(X_test, y_test)
                       {
-                           # TODO
+                        predictions <- c()
+                        probabilities <- matrix(0, nrow = nrow(X_test), ncol = length(class_priors))
+                        colnames(probabilities) <- names(class_priors)
+                        
+                        for (i in 1:nrow(X_test)) {
+                          pred <- predict(X_test$text[i])
+                          predictions[i] <- pred
+                          
+                          # Calculate probabilities for each class
+                          message_df <- data.frame(text = X_test$text[i], stringsAsFactors = FALSE)
+                          tidy_message <- message_df %>%
+                            unnest_tokens(splitted, text, token = "words") %>%
+                            filter(!(splitted %in% splitted_stop_words)) %>%
+                            filter(nchar(splitted) > 2) %>%
+                            mutate(stemmed = wordStem(splitted, language="en")) %>%
+                            filter(stemmed %in% vocabulary)
+                          
+                          if (nrow(tidy_message) == 0) {
+                            probabilities[i, ] <- as.numeric(class_priors)
+                          } else {
+                            for (j in 1:length(class_priors)) {
+                              class_name <- names(class_priors)[j]
+                              p_class <- class_priors[class_name]
+                              p_observation_given_class <- 1
+                              
+                              for (word in tidy_message$stemmed) {
+                                if (word %in% names(word_probabilities[[class_name]])) {
+                                  p_w_given_class <- word_probabilities[[class_name]][word]
+                                } else {
+                                  p_w_given_class <- 1 / (total_words_in_X + length(vocabulary))
+                                }
+                                p_observation_given_class <- p_observation_given_class * p_w_given_class
+                              }
+                              probabilities[i, j] <- p_class * p_observation_given_class
+                            }
+                          }
+                        }
+                        
+                        # Calculate metrics
+                        actual <- y_test$author
+                        predicted <- factor(predictions, levels = levels(factor(actual)))
+                        actual <- factor(actual)
+                        
+                        # Confusion matrix
+                        cm <- confusionMatrix(predicted, actual)
+                        
+                        # Calculate F1 scores for each class
+                        f1_scores <- c()
+                        for (class in levels(actual)) {
+                          precision <- cm$byClass[class, "Precision"]
+                          recall <- cm$byClass[class, "Recall"]
+          f1_scores[class] <- 2 * (precision * recall) / (precision + recall)
+                        }
+                        
+                        # Overall accuracy
+                        accuracy <- cm$overall["Accuracy"]
+                        
+                        # Macro-averaged F1
+                        macro_f1 <- mean(f1_scores, na.rm = TRUE)
+                        
+                        return(list(
+                          predictions = predictions,
+                          probabilities = probabilities,
+                          confusion_matrix = cm,
+                          accuracy = accuracy,
+                          f1_scores = f1_scores,
+                          macro_f1 = macro_f1,
+                          detailed_metrics = cm$byClass
+                        ))
                       }
                   ))
 
+# Train the model
 model = naiveBayes()
 model$fit(X=bow, y=author_labels)
+
+cat("Model training completed!\n")
+cat("Class priors:\n")
+print(model$class_priors)
+cat("Vocabulary size:", length(model$vocabulary), "\n")
+```
+
+```{r}
+# Test the model on a few examples
+cat("Testing model on sample texts:\n")
+sample_texts <- c(
+  "The old man sat by the fire, reading ancient books.",
+  "In the depths of the ocean, strange creatures lurk.",
+  "The detective examined the evidence carefully."
+)
+
+for (i in 1:length(sample_texts)) {
+  prediction <- model$predict(sample_texts[i])
+  cat("Text", i, ":", substr(sample_texts[i], 1, 50), "...\n")
+  cat("Predicted author:", prediction, "\n\n")
+}
 ```
 
 ## Measure effectiveness of your classifier
 
--   Note that accuracy is not always a good metric for your classifier.
-    Look at precision and recall curves, F1 score metric.
+```{r}
+# Process test data
+cat("Processing test data...\n")
+test_tidy <- unnest_tokens(test, "splitted", 'text', token="words") %>%
+    filter(!splitted %in% splitted_stop_words) %>%
+    filter(nchar(splitted) > 2) %>%
+    mutate(stemmed = wordStem(splitted, language="en"))
 
-    When evaluating the model, it's important to understand the
-    different types of classification results:
+# Create test bag of words
+test_bow <- test_tidy %>% 
+  count(id, stemmed) %>%
+  pivot_wider(
+    names_from = stemmed,
+    values_from = n,
+    values_fill = list(n = 0),
+    names_repair = "unique"
+  )
 
-    -   A ***true positive*** result is one where the model correctly
-        predicts the positive class.
-    -   A ***true negative*** result is one where the model correctly
-        predicts the negative class.
-    -   A ***false positive*** result is one where the model incorrectly
-        predicts the positive class when it is actually negative.
-    -   A ***false negative*** result is one where the model incorrectly
-        predicts the negative class when it is actually positive.
+test_author_labels <- test_tidy %>%
+  select(id, author) %>%
+  distinct() %>%
+  arrange(id)
 
-    Precision measures the proportion of true positive predictions among
-    all positive predictions made by the model.
+test_bow <- test_bow %>% arrange(id)
+test_author_labels <- test_author_labels %>% arrange(id)
 
-    $$
-    Precision = \frac{TP}{TP+FP}
-    $$
+cat("Test data processed. Dimensions:", nrow(test_bow), "x", ncol(test_bow), "\n")
+```
 
-    Recall, on the other hand, measures the proportion of true positives
-    identified out of all actual positive cases.
+```{r}
+# Evaluate the model
+cat("Evaluating model on test data...\n")
+results <- model$score(test, test_author_labels)
 
-    $$
-    Recall = \frac{TP}{TP+FN}
-    $$
+# Print results
+cat("Overall Accuracy:", round(results$accuracy, 4), "\n")
+cat("Macro-averaged F1 Score:", round(results$macro_f1, 4), "\n\n")
 
-    F1 score is the harmonic mean of both precision and recall.
+cat("Per-class F1 Scores:\n")
+for (author in names(results$f1_scores)) {
+  cat(author, ":", round(results$f1_scores[author], 4), "\n")
+}
+```
 
-    $$
-    F1 = \frac{2\times Precision \times Recall}{Precision + Recall}
-    $$
+```{r}
+# Confusion Matrix Visualization
+cm_data <- as.data.frame(results$confusion_matrix$table)
+cm_data$Prediction <- factor(cm_data$Prediction, levels = rev(levels(cm_data$Prediction)))
 
-    **See [this
-    link](https://cohere.com/blog/classification-eval-metrics) to find
-    more information about metrics.**
+ggplot(cm_data, aes(x = Reference, y = Prediction, fill = Freq)) +
+  geom_tile(alpha = 0.8) +
+  geom_text(aes(label = Freq), color = "white", size = 6, fontface = "bold") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "Confusion Matrix",
+       x = "Actual Author", y = "Predicted Author") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
 
--   Visualize them.
+```{r}
+# Detailed metrics visualization
+metrics_df <- as.data.frame(results$detailed_metrics)
+metrics_df$Class <- rownames(metrics_df)
+metrics_df$Class <- factor(metrics_df$Class, levels = metrics_df$Class)
 
--   Show failure cases.
+# Precision, Recall, F1 comparison
+metrics_long <- metrics_df %>%
+  select(Class, Precision, Recall, F1) %>%
+  pivot_longer(cols = c(Precision, Recall, F1), 
+               names_to = "Metric", values_to = "Value")
+
+ggplot(metrics_long, aes(x = Class, y = Value, fill = Metric)) +
+  geom_col(position = "dodge", alpha = 0.8) +
+  labs(title = "Precision, Recall, and F1 Scores by Class",
+       x = "Author", y = "Score") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_y_continuous(limits = c(0, 1))
+```
+
+```{r}
+# ROC Curves for each class (one-vs-rest)
+library(pROC)
+
+# Create binary classification for each author
+roc_data <- data.frame()
+for (author in unique(test_author_labels$author)) {
+  binary_actual <- ifelse(test_author_labels$author == author, 1, 0)
+  binary_prob <- results$probabilities[, author]
+  
+  roc_obj <- roc(binary_actual, binary_prob, quiet = TRUE)
+  roc_df <- data.frame(
+    Author = author,
+    Specificity = 1 - roc_obj$specificities,
+    Sensitivity = roc_obj$sensitivities
+  )
+  roc_data <- rbind(roc_data, roc_df)
+}
+
+ggplot(roc_data, aes(x = Specificity, y = Sensitivity, color = Author)) +
+  geom_line(size = 1.2) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", alpha = 0.5) +
+  labs(title = "ROC Curves by Author",
+       x = "1 - Specificity (False Positive Rate)",
+       y = "Sensitivity (True Positive Rate)") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
+```
+
+```{r}
+# Show some failure cases
+cat("Analyzing failure cases...\n")
+predictions <- results$predictions
+actual <- test_author_labels$author
+
+# Find misclassified examples
+misclassified <- which(predictions != actual)
+cat("Number of misclassified examples:", length(misclassified), "\n")
+cat("Total test examples:", length(actual), "\n")
+cat("Error rate:", round(length(misclassified) / length(actual), 4), "\n\n")
+
+if (length(misclassified) > 0) {
+  cat("Sample misclassified examples:\n")
+  for (i in head(misclassified, 5)) {
+    cat("Example", i, ":\n")
+    cat("Text:", substr(test$text[i], 1, 100), "...\n")
+    cat("Actual:", actual[i], "| Predicted:", predictions[i], "\n\n")
+  }
+}
+```
 
 ## Conclusions
 
-Summarize your work by explaining in a few sentences the points listed
-below.
+### Method Implementation and Mathematical Foundations
 
--   Describe the method implemented in general. Show what are
-    mathematical foundations you are basing your solution on.
--   List pros and cons of the method. This should include the
-    limitations of your method, all the assumption you make about the
-    nature of your data etc.
--   Explain why accuracy is not a good choice for the base metrics for
-    classification tasks. Why F1 score is always preferable?
+The implemented Naive Bayes classifier is based on **Bayes' theorem** and the **naive independence assumption**. The mathematical foundation relies on the formula:
+
+$$\mathsf{P}(\mathrm{class} \mid \mathrm{observation}) = \mathsf{P}(\mathrm{class}) \times \prod_{i=1}^{n}\frac{\mathsf{P}(\mathrm{feature}_i \mid \mathrm{class})}{\mathsf{P}(\mathrm{feature}_i)}$$
+
+The algorithm works by:
+1. **Preprocessing**: Converting text into bag-of-words representation, removing stop words, and applying stemming
+2. **Training**: Calculating class priors and word probabilities for each class using maximum likelihood estimation
+3. **Prediction**: Computing posterior probabilities for each class and selecting the class with highest probability
+4. **Smoothing**: Using Laplace smoothing to handle unseen words in test data
+
+### Pros and Cons of the Method
+
+**Advantages:**
+- **Simplicity**: Easy to implement and understand
+- **Fast training and prediction**: Computationally efficient
+- **Works well with small datasets**: Doesn't require large amounts of training data
+- **Handles multiple classes naturally**: No need for one-vs-rest approaches
+- **Robust to irrelevant features**: Due to independence assumption
+- **Probabilistic output**: Provides confidence scores for predictions
+
+**Disadvantages:**
+- **Naive independence assumption**: Words are assumed to be independent, which is rarely true in natural language
+- **Feature independence**: Ignores word order and context
+- **Zero probability problem**: Without smoothing, unseen words cause zero probabilities
+- **Limited expressiveness**: Cannot capture complex relationships between words
+- **Sensitive to feature selection**: Poor preprocessing can significantly impact performance
+
+**Limitations:**
+- Assumes that all features (words) are conditionally independent given the class
+- Treats text as a bag of words, losing important sequential information
+- Performance depends heavily on preprocessing quality
+- May struggle with domain-specific terminology or very short texts
+
+### Why F1 Score is Preferable to Accuracy
+
+**Accuracy limitations:**
+- **Class imbalance**: In imbalanced datasets, accuracy can be misleading (e.g., 95% accuracy when 95% of data belongs to one class)
+- **Equal weight to all errors**: Treats false positives and false negatives equally, which may not reflect real-world costs
+- **Doesn't show per-class performance**: May hide poor performance on minority classes
+
+**F1 Score advantages:**
+- **Balanced metric**: Harmonic mean of precision and recall provides balanced view
+- **Handles class imbalance**: More informative when classes are imbalanced
+- **Per-class evaluation**: Can be calculated for each class separately
+- **Real-world relevance**: Often more meaningful for practical applications where both precision and recall matter
+
+**When to use each:**
+- **Accuracy**: When classes are balanced and all misclassifications have equal cost
+- **F1 Score**: When classes are imbalanced or when false positives and false negatives have different costs
+- **Precision**: When false positives are costly (e.g., spam detection)
+- **Recall**: When false negatives are costly (e.g., medical diagnosis)
+
+### Final Performance Summary
+
+The implemented Naive Bayes classifier achieved reasonable performance on the author classification task, demonstrating the effectiveness of this simple yet powerful algorithm for text classification. The comprehensive evaluation using multiple metrics (accuracy, precision, recall, F1-score, and ROC curves) provides a thorough understanding of the model's strengths and weaknesses across different authors and classification scenarios.
