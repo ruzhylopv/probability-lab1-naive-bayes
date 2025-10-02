@@ -3,7 +3,6 @@ output:
   html_document: default
   pdf_document: default
 ---
-# nolint: quotes_linter.
 ---
 editor_options:
   markdown:
@@ -84,6 +83,8 @@ library(readr)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
+library(wordcloud)
+library(RColorBrewer)
 ```
 
 ## Outline of the work
@@ -185,6 +186,45 @@ ggplot(overall_word_freq, aes(x = reorder(splitted, n), y = n)) +
   theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
 ```
 
+```{r}
+
+top_words_per_author <- word_freq %>%
+  group_by(author) %>%
+  slice_head(n = 10) %>%
+  ungroup()
+
+ggplot(top_words_per_author, aes(x = reorder(splitted, freq), y = freq, fill = author)) +
+  geom_col(alpha = 0.8) +
+  coord_flip() +
+  facet_wrap(~author, scales = "free_y") +
+  labs(title = "Top 10 Words by Author",
+       x = "Words", y = "Frequency") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+        legend.position = "none")
+```
+
+```{r}
+
+if (require(wordcloud, quietly = TRUE) && require(RColorBrewer, quietly = TRUE)) {
+  par(mfrow = c(1, 3))
+  for (author_name in authors) {
+    author_words <- word_freq %>%
+      filter(author == author_name) %>%
+      head(30)
+    
+    wordcloud(words = author_words$splitted, 
+              freq = author_words$freq,
+              max.words = 30,
+              random.order = FALSE,
+              colors = brewer.pal(8, "Dark2"),
+              main = paste("Word Cloud:", author_name))
+  }
+  par(mfrow = c(1, 1))
+} else {
+  cat("Word clouds skipped - wordcloud or RColorBrewer not available\n")
+}
+```
 ## Classifier implementation
 
 ```{r}
@@ -316,10 +356,11 @@ model = naiveBayes()
 model$fit(X=bow, y=author_labels)
 result <- model$score(X_test=X_test, y_test=y_test)
 ```
+## Score of a model (in metrics):
 ```{r}
 model$computed_score
 ```
-Here are a few sentences that failed to classify correctly:
+### Here are a few sentences that failed to classify correctly:
 ```{r}
 for (i in 1:10) {
   print(result$failures[[i]])
