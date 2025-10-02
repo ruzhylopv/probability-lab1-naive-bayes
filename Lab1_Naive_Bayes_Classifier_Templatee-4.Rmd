@@ -415,13 +415,10 @@ for (i in 1:10) {
 
 ## Conclusions
 
-Summarize your work by explaining in a few sentences the points listed
-below.
+- **Method:** We implemented a Naive Bayes classifier, a probabilistic model based on Bayes’ theorem. The classifier computes the posterior probability of each author (class) given the words in a text by combining the class prior $P(\text{author})$ with the likelihood of the observed words $P(\text{words}\mid\text{author})$. Under the Naive Bayes independence assumption the likelihood factorizes as $\prod_{i} P(\text{word}_i \mid \text{author})$, which makes the calculation tractable for high-dimensional text data. In practice we estimate $P(\text{author})$ and $P(\text{word}\mid\text{author})$ from the training set (bag-of-words counts in our case), apply Laplace smoothing to handle unseen words, and predict the author with the highest posterior probability
 
--   Describe the method implemented in general. Show what are
-    mathematical foundations you are basing your solution on.
--   List pros and cons of the method. This should include the
-    limitations of your method, all the assumption you make about the
-    nature of your data etc.
--   Explain why accuracy is not a good choice for the base metrics for
-    classification tasks. Why F1 score is always preferable?
+- **Pros:** Naive Bayes is easy to implement, fast to train and predict, and requires only simple frequency counts. It scales well to large vocabularies and high-dimensional feature spaces typical for text data (bag-of-words representations). Because it estimates relatively few parameters (word counts per class), it can perform pretty well even with small datasets and training sizes. The model is also tolerant of irrelevant features — words that are not predictive of the class have almost no effect on the final decision.
+
+- **Cons:** The principal limitation is the strong conditional independence assumption: words are treated as independent given the class, which rarely holds for natural language. Another practical issue is the zero-frequency problem (a word not seen in a class yields zero likelihood for that class). We overcame this problem using Laplace smoothing
+
+- **Evaluation metrics:** We report accuracy, precision, recall and F₁ to evaluate our classifier. Accuracy alone can be misleading, especially for imbalanced data, because a model that always predicts the largest class can still achieve high accuracy while performing poorly on minority classes. The F₁ score — the harmonic mean of precision and recall — balances false positives and false negatives and gives a more informative single-number summary of performance when class distributions are uneven or when both types of errors matter. For multi-class tasks like author identification(in our case), per-class precision, recall and F₁ provide insights into which authors the model handles well and which require more data to train our model.
