@@ -1,0 +1,644 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{\vspace{-2.5em}}
+
+\begin{document}
+
+\subsection{\# nolint: quotes\_linter.}\label{nolint-quotes_linter.}
+
+editor\_options: markdown: wrap: 72 ---
+
+\section{Probability and Statistics}\label{probability-and-statistics}
+
+\section{Lab Assignment 1: Naive Bayes
+Classifier}\label{lab-assignment-1-naive-bayes-classifier}
+
+\subsection{Work breakdown}\label{work-breakdown}
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Name1 Surname1}:
+\item
+  \emph{Name2 Surname2}:
+\item
+  \emph{Name3 Surname3}:
+\end{itemize}
+
+\subsection{Introduction}\label{introduction}
+
+During the first three weeks, you learned a couple of essential notions
+and theorems, and one of the most important among them is the
+\textbf{Bayes theorem}.
+
+\textbf{Naive Bayes Classifier} is a simple algorithm, which is based on
+\textbf{Bayes theorem} and used for solving classification problems.
+\textbf{Classification problem} is a problem in which an observation has
+to be classified in one of the \(n\) classes based on its similarity
+with observations in each class.
+
+It is a \textbf{probabilistic classifier}, which means it predicts based
+on the probability of an observation belonging to each class. To compute
+it, this algorithm uses \textbf{Bayes' formula,} that you probably
+already came across in \textbf{Lesson 3:}
+\[\mathsf{P}(\mathrm{class}\mid \mathrm{observation})=\frac{\mathsf{P}(\mathrm{observation}\mid\mathrm{class})\mathsf{P}(\mathrm{class})}{\mathsf{P}(\mathrm{observation})}\]
+
+Under the strong \textbf{independence} assumption, one can calculate
+\(\mathsf{P}(\mathrm{observation} \mid \mathrm{class})\) as
+\[\mathsf{P}(\mathrm{observation}) = \prod_{i=1}^{n} \mathsf{P}(\mathrm{feature}_i), \qquad \mathsf{P}(\mathrm{observation} \mid \mathrm{class}) = \prod_{i=1}^{n} \mathsf{P}(\mathrm{feature}_i \mid \mathrm{class}),\]
+where \(n\) is the total number of features describing a given
+observation (\emph{For example, if an observation is presented as a
+sentence, then each word can be a feature}). Thus,
+\(\mathsf{P}(\mathrm{class}|\mathrm{observation})\) now can be
+calculated as
+
+\[\mathsf{P}(\mathrm{class} \mid \mathrm{\mathrm{observation}}) = \mathsf{P}(\mathrm{class})\times \prod_{i=1}^{n}\frac{\mathsf{P}(\mathrm{feature}_i\mid \mathrm{class})}{\mathsf{P}(\mathrm{feature}_i)}\tag{1}\]
+
+All the terms on the right-hand side can be estimated as corresponding
+relative frequencies using available data\\
+
+\textbf{See
+\href{https://www.javatpoint.com/machine-learning-naive-bayes-classifier}{\emph{this
+link}} for more detailed explanations \& examples :) Also you can watch
+\href{https://youtu.be/O2L2Uv9pdDA?si=-ohkHVDuu3sLLGMq}{\emph{this
+video}} for more examples!}
+
+\subsection{Data description}\label{data-description}
+
+There are 5 datasets uploaded on the cms (data.zip)
+
+To determine your variant, take your team number from the list of teams
+on cms and take \emph{mod 5} - this is the number of your data set.
+
+\begin{itemize}
+\item
+  \textbf{0 - authors} This data set consists of citations of three
+  famous writers: Edgar Alan Poe, Mary Wollstonecraft Shelley and HP
+  Lovecraft. The task with this data set is to classify a piece of text
+  with the author who was more likely to write it.
+\item
+  \textbf{1 - discrimination} This data set consists of tweets that have
+  discriminatory (sexism or racism) messages or of tweets that are of
+  neutral mood. The task is to determine whether a given tweet has
+  discriminatory mood or does not.
+\item
+  \textbf{2 - fake news} This data set contains data of American news: a
+  headline and an abstract of the article. Each piece of news is
+  classified as fake or credible. The task is to classify the news from
+  test.csv as credible or fake.
+\item
+  \textbf{3 - sentiment} All the text messages contained in this data
+  set are labeled with three sentiments: positive, neutral or negative.
+  The task is to classify some text message as the one of positive mood,
+  negative or neutral.
+\item
+  \textbf{4 - spam} This last data set contains SMS messages classified
+  as spam or non-spam (ham in the data set). The task is to determine
+  whether a given message is spam or non-spam.
+\end{itemize}
+
+Each data set consists of two files: \emph{train.csv} and
+\emph{test.csv}. The first one is used to find the probabilities of the
+corresponding classes and the second one is used to test your classifier
+afterwards. Note that it is crucial to randomly split your data into
+training and testing parts to test the classifierʼs possibilities on the
+unseen data.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# here goes a list of recommended libraries,}
+\CommentTok{\# though you may install other ones if they are needed}
+\FunctionTok{library}\NormalTok{(tidytext)}
+\FunctionTok{library}\NormalTok{(readr)}
+\FunctionTok{library}\NormalTok{(dplyr)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## 
+## Attaching package: 'dplyr'
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:stats':
+## 
+##     filter, lag
+\end{verbatim}
+
+\begin{verbatim}
+## The following objects are masked from 'package:base':
+## 
+##     intersect, setdiff, setequal, union
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(ggplot2)}
+\FunctionTok{library}\NormalTok{(tidyr)}
+
+\FunctionTok{library}\NormalTok{(SnowballC)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Outline of the work}\label{outline-of-the-work}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Data pre-processing} (includes removing punctuation marks and
+  stop words, representing each message as a bag-of-words)
+\item
+  \textbf{Data visualization} (it's time to plot your data!)
+\item
+  \textbf{Classifier implementation} (using the training set, calculate
+  all the conditional probabilities in formula (1))
+\item
+  \textbf{Measurements of effectiveness of your classifier} (use the
+  results from the previous step to predict classes for messages in the
+  testing set and measure the accuracy, precision and recall, F1 score
+  metric etc)
+\item
+  \textbf{Conclusions}
+\end{enumerate}
+
+\emph{!! do not forget to submit both the (compiled) Rmd source file and
+the .html output !!}
+
+\subsection{Data pre-processing}\label{data-pre-processing}
+
+\begin{itemize}
+\tightlist
+\item
+  Read the \emph{.csv} data files.
+\item
+  Сlear your data from punctuation or other unneeded symbols.
+\item
+  Clear you data from stop words. You don't want words as is, and, or
+  etc. to affect your probabilities distributions, so it is a wise
+  decision to get rid of them. Find list of stop words in the cms under
+  the lab task.
+\item
+  Represent each test message as its bag-of-words. Here:
+  \url{https://machinelearningmastery.com/gentle-introduction-bag-words-model/}
+  you can find general introduction to the bag-of-words model and
+  examples on to create it.
+\item
+  It is highly recommended to get familiar with R dataframes, it would
+  make the work much easier to do.
+\item
+  Useful links:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    \url{https://steviep42.github.io/webscraping/book/bagofwords.html\#tidytext}
+    - example of using \emph{tidytext} to count frequencies of the
+    words.
+  \item
+    Basics of Text Mining in R:
+    \url{http://rstudio-pubs-static.s3.amazonaws.com/256588_57b585da6c054349825cba46685d8464.html}
+    . Note that it also includes an example on how to create a bag of
+    words from your text document.
+  \end{itemize}
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{list.files}\NormalTok{(}\FunctionTok{getwd}\NormalTok{())}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "data"                                        
+## [2] "data.zip"                                    
+## [3] "intro-R.html"                                
+## [4] "intro-R.Rmd"                                 
+## [5] "Lab1_Naive_Bayes_Classifier_Templatee-4.html"
+## [6] "Lab1_Naive_Bayes_Classifier_Templatee-4.Rmd" 
+## [7] "probability-lab1-naive-bayes.Rproj"          
+## [8] "stop_words.txt"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{list.files}\NormalTok{(}\StringTok{"data/0{-}authors"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## [1] "test.csv"  "train.csv"
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{test\_path }\OtherTok{\textless{}{-}} \StringTok{"data/0{-}authors/test.csv"}
+\NormalTok{train\_path }\OtherTok{\textless{}{-}} \StringTok{"data/0{-}authors/train.csv"}
+
+\NormalTok{stop\_words }\OtherTok{\textless{}{-}} \FunctionTok{read\_file}\NormalTok{(}\StringTok{"stop\_words.txt"}\NormalTok{)}
+\CommentTok{\# https://stackoverflow.com/questions/27195912/why{-}does{-}strsplit{-}return{-}a{-}list}
+\NormalTok{splitted\_stop\_words }\OtherTok{\textless{}{-}} \FunctionTok{strsplit}\NormalTok{(stop\_words, }\AttributeTok{split=}\StringTok{\textquotesingle{}}\SpecialCharTok{\textbackslash{}n}\StringTok{\textquotesingle{}}\NormalTok{)}
+\NormalTok{splitted\_stop\_words }\OtherTok{\textless{}{-}}\NormalTok{ splitted\_stop\_words[[}\DecValTok{1}\NormalTok{]]}
+\CommentTok{\# splitted\_stop\_words}
+\CommentTok{\# head(splitted\_stop\_words)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{train }\OtherTok{\textless{}{-}}  \FunctionTok{read.csv}\NormalTok{(}\AttributeTok{file =}\NormalTok{ train\_path, }\AttributeTok{stringsAsFactors =} \ConstantTok{FALSE}\NormalTok{)}
+\NormalTok{test }\OtherTok{\textless{}{-}}  \FunctionTok{read.csv}\NormalTok{(}\AttributeTok{file =}\NormalTok{ test\_path, }\AttributeTok{stringsAsFactors =} \ConstantTok{FALSE}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# note the power functional features of R bring us! }
+
+    \CommentTok{\# The vocabulary is now 22212 unique words long!}
+    \CommentTok{\# That is why we decided to apply the stemming algorithm.}
+\NormalTok{tidy\_text }\OtherTok{\textless{}{-}} \FunctionTok{unnest\_tokens}\NormalTok{(train[, ], }\StringTok{"splitted"}\NormalTok{, }\StringTok{\textquotesingle{}text\textquotesingle{}}\NormalTok{, }\AttributeTok{token=}\StringTok{"words"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+    \FunctionTok{filter}\NormalTok{(}\SpecialCharTok{!}\NormalTok{splitted }\SpecialCharTok{\%in\%}\NormalTok{ splitted\_stop\_words)}
+\NormalTok{    len\_of\_vocab\_before\_stemming }\OtherTok{\textless{}{-}} \FunctionTok{length}\NormalTok{(}\FunctionTok{unique}\NormalTok{(tidy\_text}\SpecialCharTok{$}\NormalTok{splitted))}
+
+
+\CommentTok{\#    tidy\_text \textless{}{-} tidy\_text \%\textgreater{}\% mutate(stemmed = wordStem(splitted, \#language="en"))}
+\CommentTok{\#    len\_of\_vocab\_after\_stemming \textless{}{-} length(unique(tidy\_text$stemmed))}
+
+\CommentTok{\#    cat("Vocabulary before stemming:", len\_of\_vocab\_before\_stemming, "\textbackslash{}n")}
+\CommentTok{\#    cat("Vocabulary after stemming:", len\_of\_vocab\_after\_stemming, "\textbackslash{}n")}
+\CommentTok{\#    cat("The decrease:", len\_of\_vocab\_before\_stemming {-} \#len\_of\_vocab\_after\_stemming, "\textbackslash{}n")}
+\FunctionTok{head}\NormalTok{(tidy\_text)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+##      X      id       author      splitted
+## 1 8216 id12391 HP Lovecraft        palace
+## 2 8216 id12391 HP Lovecraft          also
+## 3 8216 id12391 HP Lovecraft          many
+## 4 8216 id12391 HP Lovecraft     galleries
+## 5 8216 id12391 HP Lovecraft          many
+## 6 8216 id12391 HP Lovecraft amphitheatres
+\end{verbatim}
+
+The vocabulary without using the stemming algorithm (See
+\url{https://machinelearningmastery.com/gentle-introduction-bag-words-model/})
+\textbackslash{} was 22211 words. Now we reduced it to 13479 using
+SnowballC library stemming algorithm
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\#Converting each message into bag of words:}
+\NormalTok{vocabulary }\OtherTok{\textless{}{-}} \FunctionTok{unique}\NormalTok{(tidy\_text}\SpecialCharTok{$}\NormalTok{splitted)}
+\NormalTok{authors }\OtherTok{\textless{}{-}} \FunctionTok{unique}\NormalTok{(tidy\_text}\SpecialCharTok{$}\NormalTok{author)}
+
+\NormalTok{bow }\OtherTok{\textless{}{-}}\NormalTok{ tidy\_text }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{count}\NormalTok{(id, splitted)}
+\NormalTok{author\_labels }\OtherTok{\textless{}{-}}\NormalTok{ tidy\_text }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{select}\NormalTok{(id, author) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{distinct}\NormalTok{()}
+\NormalTok{bow }\OtherTok{\textless{}{-}}\NormalTok{ bow }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{pivot\_wider}\NormalTok{(}
+    \AttributeTok{names\_from =}\NormalTok{ splitted,}
+    \AttributeTok{values\_from =}\NormalTok{ n,}
+    \AttributeTok{values\_fill =} \FunctionTok{list}\NormalTok{(}\AttributeTok{n =} \DecValTok{0}\NormalTok{),}
+    \AttributeTok{names\_repair=}\StringTok{"unique"}
+\NormalTok{  )}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## New names:
+## * `id` -> `id...1`
+## * `id` -> `id...15371`
+\end{verbatim}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{head}\NormalTok{(bow)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+## # A tibble: 6 x 22,212
+##   id...1  content idris  mine resolve  well accursed  city  even faint fainter
+##   <chr>     <int> <int> <int>   <int> <int>    <int> <int> <int> <int>   <int>
+## 1 id00001       1     1     1       1     1        0     0     0     0       0
+## 2 id00002       0     0     0       0     0        1     1     1     1       1
+## 3 id00003       0     0     0       0     0        0     0     0     0       0
+## 4 id00004       0     0     0       0     0        0     0     0     0       0
+## 5 id00005       0     0     0       0     0        0     0     0     0       0
+## 6 id00006       0     0     0       0     0        0     0     0     0       0
+## # i 22,201 more variables: hateful <int>, made <int>, modernity <int>,
+## #   burn <int>, dark <int>, incidents <int>, know <int>, passage <int>,
+## #   shadow <int>, valley <int>, clearness <int>, lost <int>, matter <int>,
+## #   might <int>, necessarily <int>, one <int>, perhaps <int>, points <int>,
+## #   see <int>, sight <int>, two <int>, unusual <int>, whole <int>, dying <int>,
+## #   england <int>, looked <int>, lord <int>, obeyed <int>, protector <int>,
+## #   certainty <int>, difficult <int>, given <int>, happened <int>, ...
+\end{verbatim}
+
+\subsection{Data visualization}\label{data-visualization}
+
+\begin{verbatim}
+{r}
+word_freq <- tidy_text %>%
+  group_by(author, splitted) %>%
+  summarise(freq = n(), .groups = "drop") %>%
+  arrange(author, desc(freq))
+  
+  
+  
+\end{verbatim}
+
+Each time you work with some data, you need to understand it before you
+start processing it. R has very powerful tools to make nice plots and
+visualization. Show what are the most common words for negative and
+positive examples as a histogram, word cloud etc. Be creative!
+
+\subsection{Classifier implementation}\label{classifier-implementation}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{naiveBayes }\OtherTok{\textless{}{-}} \FunctionTok{setRefClass}\NormalTok{(}\StringTok{"naiveBayes"}\NormalTok{,}
+                          
+       \CommentTok{\# here it would be wise to have some vars to store intermediate result}
+       \CommentTok{\# frequency dict etc. Though pay attention to bag of words! }
+       \AttributeTok{fields =} \FunctionTok{list}\NormalTok{(}
+         \AttributeTok{class\_priors =} \StringTok{"table"}\NormalTok{,}
+         \CommentTok{\#Word probabilities {-}\textgreater{} probabilities of words given class.}
+         \CommentTok{\#Structure:}
+         \CommentTok{\#HP Lovecraft}
+         \CommentTok{\#hello   free  money    now }
+        \CommentTok{\#  0.25   0.25   0.40   0.10}
+         \AttributeTok{word\_probabilities =} \StringTok{"list"}\NormalTok{,}
+        
+        \CommentTok{\#A vector of all words available in the training data}
+         \AttributeTok{vocabulary =} \StringTok{"character"}\NormalTok{,}
+        
+        \CommentTok{\#A number of all words in training data used to find P(feature)}
+        \AttributeTok{total\_words\_in\_X =} \StringTok{"numeric"}
+\NormalTok{       ),}
+       \AttributeTok{methods =} \FunctionTok{list}\NormalTok{(}
+                    \CommentTok{\# prepare your training data as X {-} bag of words for each of your}
+                    \CommentTok{\# messages and corresponding label for the message encoded as 0 or 1 }
+                    \CommentTok{\# (binary classification task)}
+                    \AttributeTok{fit =} \ControlFlowTok{function}\NormalTok{(X, y)}
+\NormalTok{                    \{}
+\NormalTok{                      X }\OtherTok{\textless{}{-}}\NormalTok{ X[}\FunctionTok{order}\NormalTok{(X}\SpecialCharTok{$}\NormalTok{id...}\DecValTok{1}\NormalTok{), ]}
+\NormalTok{                      y }\OtherTok{\textless{}{-}}\NormalTok{ y[}\FunctionTok{order}\NormalTok{(y}\SpecialCharTok{$}\NormalTok{id), ]}
+                      
+                      \FunctionTok{stopifnot}\NormalTok{(}\FunctionTok{all}\NormalTok{(X}\SpecialCharTok{$}\NormalTok{id...}\DecValTok{1} \SpecialCharTok{==}\NormalTok{ y}\SpecialCharTok{$}\NormalTok{id))}
+                      
+\NormalTok{                      vocabulary }\OtherTok{\textless{}\textless{}{-}} \FunctionTok{setdiff}\NormalTok{(}\FunctionTok{colnames}\NormalTok{(X), }\StringTok{"id...1"}\NormalTok{)}
+\NormalTok{                      class\_counts }\OtherTok{\textless{}{-}} \FunctionTok{table}\NormalTok{(y}\SpecialCharTok{$}\NormalTok{author)}
+\NormalTok{                      total\_words\_in\_X }\OtherTok{\textless{}\textless{}{-}} \FunctionTok{sum}\NormalTok{(}\FunctionTok{colSums}\NormalTok{(X[, }\DecValTok{2}\SpecialCharTok{:}\FunctionTok{ncol}\NormalTok{(X)]))}
+
+   
+\NormalTok{                      class\_priors }\OtherTok{\textless{}\textless{}{-}}\NormalTok{ class\_counts }\SpecialCharTok{/} \FunctionTok{sum}\NormalTok{(class\_counts)}
+\NormalTok{                      word\_probabilities }\OtherTok{\textless{}\textless{}{-}} \FunctionTok{list}\NormalTok{()}
+                        \ControlFlowTok{for}\NormalTok{ (class }\ControlFlowTok{in} \FunctionTok{names}\NormalTok{(class\_counts)) \{}
+                          \CommentTok{\# subset X where y == class}
+\NormalTok{                          X\_class }\OtherTok{\textless{}{-}}\NormalTok{ X[y}\SpecialCharTok{$}\NormalTok{author }\SpecialCharTok{==}\NormalTok{ class, , drop }\OtherTok{=} \ConstantTok{FALSE}\NormalTok{]}
+                          \CommentTok{\# sum counts of each word in that class}
+\NormalTok{                          word\_counts }\OtherTok{\textless{}{-}} \FunctionTok{colSums}\NormalTok{(X\_class[, }\DecValTok{2}\SpecialCharTok{:}\FunctionTok{ncol}\NormalTok{(X\_class)])}
+                          
+                          \CommentTok{\# add +1 to each count to avoid multiplying by 0}
+\NormalTok{                          word\_counts }\OtherTok{\textless{}{-}}\NormalTok{ word\_counts }\SpecialCharTok{+} \DecValTok{1}
+\NormalTok{                          total\_count }\OtherTok{\textless{}{-}} \FunctionTok{sum}\NormalTok{(word\_counts)}
+                          
+
+\NormalTok{                          probs }\OtherTok{\textless{}{-}}\NormalTok{ word\_counts }\SpecialCharTok{/}\NormalTok{ total\_count}
+                          
+\NormalTok{                          word\_probabilities[[class]] }\OtherTok{\textless{}\textless{}{-}}\NormalTok{ probs}
+\NormalTok{                    \}}
+                      
+                      
+                         
+\NormalTok{                    \},}
+                    
+                    \CommentTok{\# return prediction for a single message }
+                      \AttributeTok{predict =} \ControlFlowTok{function}\NormalTok{(message) \{}
+\NormalTok{                        message\_df }\OtherTok{\textless{}{-}} \FunctionTok{data.frame}\NormalTok{(}\AttributeTok{text =}\NormalTok{ message, }\AttributeTok{stringsAsFactors =} \ConstantTok{FALSE}\NormalTok{)}
+\NormalTok{                        tidy\_message }\OtherTok{\textless{}{-}}\NormalTok{ message\_df }\SpecialCharTok{\%\textgreater{}\%}
+                          \FunctionTok{unnest\_tokens}\NormalTok{(splitted, text, }\AttributeTok{token =} \StringTok{"words"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+                          \FunctionTok{filter}\NormalTok{(}\SpecialCharTok{!}\NormalTok{(splitted }\SpecialCharTok{\%in\%}\NormalTok{ splitted\_stop\_words)) }\SpecialCharTok{\%\textgreater{}\%}
+                          \FunctionTok{filter}\NormalTok{((splitted }\SpecialCharTok{\%in\%}\NormalTok{ vocabulary))}
+\NormalTok{                        probs\_per\_class }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{()}
+                        
+                        \ControlFlowTok{for}\NormalTok{ (class }\ControlFlowTok{in} \FunctionTok{names}\NormalTok{(class\_priors)) \{}
+\NormalTok{                          p\_class }\OtherTok{\textless{}{-}}\NormalTok{ class\_priors[class]}
+\NormalTok{                          p\_observation\_given\_class }\OtherTok{\textless{}{-}} \DecValTok{1}
+                          
+                          \ControlFlowTok{for}\NormalTok{ (word }\ControlFlowTok{in}\NormalTok{ tidy\_message}\SpecialCharTok{$}\NormalTok{splitted) \{}
+\NormalTok{                            p\_w\_given\_class }\OtherTok{\textless{}{-}}\NormalTok{ word\_probabilities[[class]][word]}
+\NormalTok{                            p\_observation\_given\_class }\OtherTok{\textless{}{-}}\NormalTok{ p\_observation\_given\_class }\SpecialCharTok{*}\NormalTok{ p\_w\_given\_class}
+\NormalTok{                          \}}
+                          
+\NormalTok{                          probs\_per\_class[class] }\OtherTok{\textless{}{-}}\NormalTok{ (p\_class }\SpecialCharTok{*}\NormalTok{ (p\_observation\_given\_class))}
+\NormalTok{                        \}}
+                        
+\NormalTok{                        predicted\_class }\OtherTok{\textless{}{-}} \FunctionTok{names}\NormalTok{(}\FunctionTok{which.max}\NormalTok{(probs\_per\_class))}
+                        \FunctionTok{print}\NormalTok{(probs\_per\_class)}
+                        \FunctionTok{return}\NormalTok{(predicted\_class)}
+
+\NormalTok{                    \}}
+\NormalTok{                  ,}
+                                      
+                                      \CommentTok{\# score you test set so to get the understanding how well you model}
+                                      \CommentTok{\# works.}
+                                      \CommentTok{\# look at f1 score or precision and recall}
+                                      \CommentTok{\# visualize them }
+                                      \CommentTok{\# try how well your model generalizes to real world data! }
+                      \AttributeTok{score =} \ControlFlowTok{function}\NormalTok{(X\_test, y\_test)}
+\NormalTok{                      \{}
+                           \CommentTok{\# }\AlertTok{TODO}
+\NormalTok{                      \}}
+\NormalTok{                  ))}
+
+\NormalTok{model }\OtherTok{=} \FunctionTok{naiveBayes}\NormalTok{()}
+\NormalTok{model}\SpecialCharTok{$}\FunctionTok{fit}\NormalTok{(}\AttributeTok{X=}\NormalTok{bow, }\AttributeTok{y=}\NormalTok{author\_labels)}
+\end{Highlighting}
+\end{Shaded}
+
+\subsection{Measure effectiveness of your
+classifier}\label{measure-effectiveness-of-your-classifier}
+
+\begin{itemize}
+\item
+  Note that accuracy is not always a good metric for your classifier.
+  Look at precision and recall curves, F1 score metric.
+
+  When evaluating the model, it's important to understand the different
+  types of classification results:
+
+  \begin{itemize}
+  \tightlist
+  \item
+    A \textbf{\emph{true positive}} result is one where the model
+    correctly predicts the positive class.
+  \item
+    A \textbf{\emph{true negative}} result is one where the model
+    correctly predicts the negative class.
+  \item
+    A \textbf{\emph{false positive}} result is one where the model
+    incorrectly predicts the positive class when it is actually
+    negative.
+  \item
+    A \textbf{\emph{false negative}} result is one where the model
+    incorrectly predicts the negative class when it is actually
+    positive.
+  \end{itemize}
+
+  Precision measures the proportion of true positive predictions among
+  all positive predictions made by the model.
+
+  \[
+  Precision = \frac{TP}{TP+FP}
+  \]
+
+  Recall, on the other hand, measures the proportion of true positives
+  identified out of all actual positive cases.
+
+  \[
+  Recall = \frac{TP}{TP+FN}
+  \]
+
+  F1 score is the harmonic mean of both precision and recall.
+
+  \[
+  F1 = \frac{2\times Precision \times Recall}{Precision + Recall}
+  \]
+
+  \textbf{See
+  \href{https://cohere.com/blog/classification-eval-metrics}{this link}
+  to find more information about metrics.}
+\item
+  Visualize them.
+\item
+  Show failure cases.
+\end{itemize}
+
+\subsection{Conclusions}\label{conclusions}
+
+Summarize your work by explaining in a few sentences the points listed
+below.
+
+\begin{itemize}
+\tightlist
+\item
+  Describe the method implemented in general. Show what are mathematical
+  foundations you are basing your solution on.
+\item
+  List pros and cons of the method. This should include the limitations
+  of your method, all the assumption you make about the nature of your
+  data etc.
+\item
+  Explain why accuracy is not a good choice for the base metrics for
+  classification tasks. Why F1 score is always preferable?
+\end{itemize}
+
+\end{document}

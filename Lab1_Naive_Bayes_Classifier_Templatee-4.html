@@ -364,9 +364,10 @@ display: none;
 <div id="work-breakdown" class="section level2">
 <h2>Work breakdown</h2>
 <ul>
-<li><em>Name1 Surname1</em>:</li>
-<li><em>Name2 Surname2</em>:</li>
-<li><em>Name3 Surname3</em>:</li>
+<li><em>Pavlo Ruzhylo</em>: Data preprocessing, model fitting,
+measurements of effectiveness of a model.</li>
+<li><em>Ivan Polianskyy</em>: Data visualization</li>
+<li><em>Maksym Matseliukh</em>: Conclusions</li>
 </ul>
 </div>
 <div id="introduction" class="section level2">
@@ -410,39 +411,17 @@ video</em></a> for more examples!</strong></p>
 <div id="data-description" class="section level2">
 <h2>Data description</h2>
 <p>There are 5 datasets uploaded on the cms (data.zip)</p>
-<p>To determine your variant, take your team number from the list of
-teams on cms and take <em>mod 5</em> - this is the number of your data
-set.</p>
-<ul>
-<li><p><strong>0 - authors</strong> This data set consists of citations
-of three famous writers: Edgar Alan Poe, Mary Wollstonecraft Shelley and
-HP Lovecraft. The task with this data set is to classify a piece of text
-with the author who was more likely to write it.</p></li>
-<li><p><strong>1 - discrimination</strong> This data set consists of
-tweets that have discriminatory (sexism or racism) messages or of tweets
-that are of neutral mood. The task is to determine whether a given tweet
-has discriminatory mood or does not.</p></li>
-<li><p><strong>2 - fake news</strong> This data set contains data of
-American news: a headline and an abstract of the article. Each piece of
-news is classified as fake or credible. The task is to classify the news
-from test.csv as credible or fake.</p></li>
-<li><p><strong>3 - sentiment</strong> All the text messages contained in
-this data set are labeled with three sentiments: positive, neutral or
-negative. The task is to classify some text message as the one of
-positive mood, negative or neutral.</p></li>
-<li><p><strong>4 - spam</strong> This last data set contains SMS
-messages classified as spam or non-spam (ham in the data set). The task
-is to determine whether a given message is spam or non-spam.</p></li>
-</ul>
+<p>Our dataset: - <strong>0 - authors</strong> This data set consists of
+citations of three famous writers: Edgar Alan Poe, Mary Wollstonecraft
+Shelley and HP Lovecraft. The task with this data set is to classify a
+piece of text with the author who was more likely to write it.</p>
 <p>Each data set consists of two files: <em>train.csv</em> and
 <em>test.csv</em>. The first one is used to find the probabilities of
 the corresponding classes and the second one is used to test your
 classifier afterwards. Note that it is crucial to randomly split your
 data into training and testing parts to test the classifierʼs
 possibilities on the unseen data.</p>
-<pre class="r"><code># here goes a list of recommended libraries,
-# though you may install other ones if they are needed
-library(tidytext)
+<pre class="r"><code>library(tidytext)
 library(readr)
 library(dplyr)</code></pre>
 <pre><code>## 
@@ -454,9 +433,7 @@ library(dplyr)</code></pre>
 ## 
 ##     intersect, setdiff, setequal, union</code></pre>
 <pre class="r"><code>library(ggplot2)
-library(tidyr)
-
-library(SnowballC)</code></pre>
+library(tidyr)</code></pre>
 </div>
 <div id="outline-of-the-work" class="section level2">
 <h2>Outline of the work</h2>
@@ -488,28 +465,7 @@ the lab task.</li>
 <li>Represent each test message as its bag-of-words. Here: <a href="https://machinelearningmastery.com/gentle-introduction-bag-words-model/" class="uri">https://machinelearningmastery.com/gentle-introduction-bag-words-model/</a>
 you can find general introduction to the bag-of-words model and examples
 on to create it.</li>
-<li>It is highly recommended to get familiar with R dataframes, it would
-make the work much easier to do.</li>
-<li>Useful links:
-<ul>
-<li><a href="https://steviep42.github.io/webscraping/book/bagofwords.html#tidytext" class="uri">https://steviep42.github.io/webscraping/book/bagofwords.html#tidytext</a>
-- example of using <em>tidytext</em> to count frequencies of the
-words.</li>
-<li>Basics of Text Mining in R: <a href="http://rstudio-pubs-static.s3.amazonaws.com/256588_57b585da6c054349825cba46685d8464.html" class="uri">http://rstudio-pubs-static.s3.amazonaws.com/256588_57b585da6c054349825cba46685d8464.html</a>
-. Note that it also includes an example on how to create a bag of words
-from your text document.</li>
-</ul></li>
 </ul>
-<pre class="r"><code>list.files(getwd())</code></pre>
-<pre><code>## [1] &quot;data&quot;                                        
-## [2] &quot;data.zip&quot;                                    
-## [3] &quot;intro-R.html&quot;                                
-## [4] &quot;intro-R.Rmd&quot;                                 
-## [5] &quot;Lab1_Naive_Bayes_Classifier_Templatee-4.html&quot;
-## [6] &quot;Lab1_Naive_Bayes_Classifier_Templatee-4.Rmd&quot; 
-## [7] &quot;stop_words.txt&quot;</code></pre>
-<pre class="r"><code>list.files(&quot;data/0-authors&quot;)</code></pre>
-<pre><code>## [1] &quot;test.csv&quot;  &quot;train.csv&quot;</code></pre>
 <pre class="r"><code>test_path &lt;- &quot;data/0-authors/test.csv&quot;
 train_path &lt;- &quot;data/0-authors/train.csv&quot;
 
@@ -520,33 +476,13 @@ splitted_stop_words &lt;- splitted_stop_words[[1]]
 # splitted_stop_words
 # head(splitted_stop_words)</code></pre>
 <pre class="r"><code>train &lt;-  read.csv(file = train_path, stringsAsFactors = FALSE)
-test &lt;-  read.csv(file = test_path, stringsAsFactors = FALSE)</code></pre>
+test &lt;-  read.csv(file = test_path, stringsAsFactors = FALSE, quote=&quot;\&quot;&quot;)</code></pre>
 <pre class="r"><code># note the power functional features of R bring us! 
-
-    # The vocabulary is now 22212 unique words long!
-    # That is why we decided to apply the stemming algorithm.
 tidy_text &lt;- unnest_tokens(train[, ], &quot;splitted&quot;, &#39;text&#39;, token=&quot;words&quot;) %&gt;%
     filter(!splitted %in% splitted_stop_words)
-    len_of_vocab_before_stemming &lt;- length(unique(tidy_text$splitted))
 
-
-#    tidy_text &lt;- tidy_text %&gt;% mutate(stemmed = wordStem(splitted, #language=&quot;en&quot;))
-#    len_of_vocab_after_stemming &lt;- length(unique(tidy_text$stemmed))
-
-#    cat(&quot;Vocabulary before stemming:&quot;, len_of_vocab_before_stemming, &quot;\n&quot;)
-#    cat(&quot;Vocabulary after stemming:&quot;, len_of_vocab_after_stemming, &quot;\n&quot;)
-#    cat(&quot;The decrease:&quot;, len_of_vocab_before_stemming - #len_of_vocab_after_stemming, &quot;\n&quot;)
-head(tidy_text)</code></pre>
-<pre><code>##      X      id       author      splitted
-## 1 8216 id12391 HP Lovecraft        palace
-## 2 8216 id12391 HP Lovecraft          also
-## 3 8216 id12391 HP Lovecraft          many
-## 4 8216 id12391 HP Lovecraft     galleries
-## 5 8216 id12391 HP Lovecraft          many
-## 6 8216 id12391 HP Lovecraft amphitheatres</code></pre>
-<p>The vocabulary without using the stemming algorithm (See <a href="https://machinelearningmastery.com/gentle-introduction-bag-words-model/" class="uri">https://machinelearningmastery.com/gentle-introduction-bag-words-model/</a>)
-\ was 22211 words. Now we reduced it to 13479 using SnowballC library
-stemming algorithm</p>
+X_test &lt;- test$text
+y_test &lt;- test$author</code></pre>
 <pre class="r"><code>#Converting each message into bag of words:
 vocabulary &lt;- unique(tidy_text$splitted)
 authors &lt;- unique(tidy_text$author)
@@ -565,37 +501,13 @@ bow &lt;- bow %&gt;%
 <pre><code>## New names:
 ## • `id` -&gt; `id...1`
 ## • `id` -&gt; `id...15371`</code></pre>
-<pre class="r"><code>head(bow)</code></pre>
-<pre><code>## # A tibble: 6 × 22,212
-##   id...1  content idris  mine resolve  well accursed  city  even faint fainter
-##   &lt;chr&gt;     &lt;int&gt; &lt;int&gt; &lt;int&gt;   &lt;int&gt; &lt;int&gt;    &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;int&gt;   &lt;int&gt;
-## 1 id00001       1     1     1       1     1        0     0     0     0       0
-## 2 id00002       0     0     0       0     0        1     1     1     1       1
-## 3 id00003       0     0     0       0     0        0     0     0     0       0
-## 4 id00004       0     0     0       0     0        0     0     0     0       0
-## 5 id00005       0     0     0       0     0        0     0     0     0       0
-## 6 id00006       0     0     0       0     0        0     0     0     0       0
-## # ℹ 22,201 more variables: hateful &lt;int&gt;, made &lt;int&gt;, modernity &lt;int&gt;,
-## #   burn &lt;int&gt;, dark &lt;int&gt;, incidents &lt;int&gt;, know &lt;int&gt;, passage &lt;int&gt;,
-## #   shadow &lt;int&gt;, valley &lt;int&gt;, clearness &lt;int&gt;, lost &lt;int&gt;, matter &lt;int&gt;,
-## #   might &lt;int&gt;, necessarily &lt;int&gt;, one &lt;int&gt;, perhaps &lt;int&gt;, points &lt;int&gt;,
-## #   see &lt;int&gt;, sight &lt;int&gt;, two &lt;int&gt;, unusual &lt;int&gt;, whole &lt;int&gt;, dying &lt;int&gt;,
-## #   england &lt;int&gt;, looked &lt;int&gt;, lord &lt;int&gt;, obeyed &lt;int&gt;, protector &lt;int&gt;,
-## #   certainty &lt;int&gt;, difficult &lt;int&gt;, given &lt;int&gt;, happened &lt;int&gt;, say &lt;int&gt;, …</code></pre>
 </div>
 <div id="data-visualization" class="section level2">
 <h2>Data visualization</h2>
-<p>Each time you work with some data, you need to understand it before
-you start processing it. R has very powerful tools to make nice plots
-and visualization. Show what are the most common words for negative and
-positive examples as a histogram, word cloud etc. Be creative!</p>
 </div>
 <div id="classifier-implementation" class="section level2">
 <h2>Classifier implementation</h2>
 <pre class="r"><code>naiveBayes &lt;- setRefClass(&quot;naiveBayes&quot;,
-                          
-       # here it would be wise to have some vars to store intermediate result
-       # frequency dict etc. Though pay attention to bag of words! 
        fields = list(
          class_priors = &quot;table&quot;,
          #Word probabilities -&gt; probabilities of words given class.
@@ -609,7 +521,10 @@ positive examples as a histogram, word cloud etc. Be creative!</p>
          vocabulary = &quot;character&quot;,
         
         #A number of all words in training data used to find P(feature)
-        total_words_in_X = &quot;numeric&quot;
+        total_words_in_X = &quot;numeric&quot;,
+        
+        computed_score = &quot;data.frame&quot;
+        
        ),
        methods = list(
                     # prepare your training data as X - bag of words for each of your
@@ -617,26 +532,29 @@ positive examples as a histogram, word cloud etc. Be creative!</p>
                     # (binary classification task)
                     fit = function(X, y)
                     {
-                      vocabulary &lt;&lt;- colnames(X)
+                      X &lt;- X[order(X$id...1), ]
+                      y &lt;- y[order(y$id), ]
+                      
+                      stopifnot(all(X$id...1 == y$id))
+                      
+                      vocabulary &lt;&lt;- setdiff(colnames(X), &quot;id...1&quot;)
                       class_counts &lt;- table(y$author)
-                      total_words_in_X &lt;&lt;- sum(colSums(bow[, 2:ncol(bow)]))
+                      total_words_in_X &lt;&lt;- sum(colSums(X[, 2:ncol(X)]))
 
    
                       class_priors &lt;&lt;- class_counts / sum(class_counts)
                       word_probabilities &lt;&lt;- list()
                         for (class in names(class_counts)) {
-                          # Subset X where y == class
+                          # subset X where y == class
                           X_class &lt;- X[y$author == class, , drop = FALSE]
-                          
-              
-                          # Sum counts of each word in that class
+                          # sum counts of each word in that class
                           word_counts &lt;- colSums(X_class[, 2:ncol(X_class)])
                           
-                          # Apply Laplace smoothing: +1 to each word count
+                          # add +1 to each count to avoid multiplying by 0
                           word_counts &lt;- word_counts + 1
-                          
-                          # Normalize by total count + vocab size
                           total_count &lt;- sum(word_counts)
+                          
+
                           probs &lt;- word_counts / total_count
                           
                           word_probabilities[[class]] &lt;&lt;- probs
@@ -650,52 +568,91 @@ positive examples as a histogram, word cloud etc. Be creative!</p>
                       predict = function(message) {
                         message_df &lt;- data.frame(text = message, stringsAsFactors = FALSE)
                         tidy_message &lt;- message_df %&gt;%
-                          unnest_tokens(splitted, text, token = &quot;words&quot;)
-                        
+                          unnest_tokens(splitted, text, token = &quot;words&quot;) %&gt;%
+                          filter(!(splitted %in% splitted_stop_words)) %&gt;%
+                          filter((splitted %in% vocabulary))
                         probs_per_class &lt;- c()
-                        p_observation &lt;- 1
-                        for (word in tidy_message$splitted) {
-                            if (word %in% vocabulary) {
-                              p_observation &lt;- p_observation * (sum(bow[, word]/total_words_in_X))
-                              
-                            }
-                          
-                        }
                         
                         for (class in names(class_priors)) {
                           p_class &lt;- class_priors[class]
                           p_observation_given_class &lt;- 1
                           
                           for (word in tidy_message$splitted) {
-                            
                             p_w_given_class &lt;- word_probabilities[[class]][word]
-                            if (is.na(p_w_given_class)) p_w_given_class &lt;- 1e-6
                             p_observation_given_class &lt;- p_observation_given_class * p_w_given_class
                           }
                           
-                          probs_per_class[class] &lt;- (p_class * p_observation_given_class)
+                          probs_per_class[class] &lt;- (p_class * (p_observation_given_class))
                         }
                         
-                        probs_per_class &lt;- probs_per_class / p_observation
-                        
-                        return(probs_per_class)
+                        predicted_class &lt;- names(which.max(probs_per_class))
+                        return(predicted_class)
+
                     }
                   ,
                                       
-                                      # score you test set so to get the understanding how well you model
-                                      # works.
-                                      # look at f1 score or precision and recall
-                                      # visualize them 
-                                      # try how well your model generalizes to real world data! 
-                                      score = function(X_test, y_test)
-                                      {
-                                           # TODO
-                                      }
-                  ))
 
+                      score = function(X_test, y_test)
+                      {
+                            confusion &lt;- matrix(0, nrow = 3, ncol = 3)
+                            rownames(confusion) &lt;- c(&quot;Edgar Alan Poe&quot;, &quot;HP Lovecraft&quot;, &quot;Mary Wollstonecraft Shelley &quot;)
+                            colnames(confusion) &lt;- c(&quot;Edgar Alan Poe&quot;, &quot;HP Lovecraft&quot;, &quot;Mary Wollstonecraft Shelley &quot;)
+                            failures &lt;- vector(&quot;list&quot;, length(X_test))
+                            count &lt;- 0
+                            for (i in seq_along(X_test)) {
+                                pred &lt;- predict(X_test[i])
+                                true &lt;- y_test[i]
+                                confusion[true, pred] &lt;- confusion[true, pred] + 1
+                                if (pred != true) {
+                                    count &lt;- count + 1
+                                    failures[[count]] &lt;- X_test[i]
+                                }
+                            }
+                            
+                            confusion
+                            
+                            scores &lt;- data.frame(
+                              Class=rownames(confusion),
+                              TP=0, FP=0, FN=0,
+                              Precision=0, Recall=0, F1=0)
+                            total &lt;- sum(confusion)
+                            
+                            for (i in 1:3) {
+                              tp &lt;- confusion[i, i]
+                              fp &lt;- sum(confusion[-i, i])
+                              fn &lt;- sum(confusion[i, -i])
+                              precision &lt;- tp / (tp + fp)
+                              recall &lt;- tp / (tp + fn)
+                              f1 &lt;- (2*precision*recall /(precision+recall))
+                              scores[i, 2:ncol(scores)] &lt;- c(tp, fp, fn, precision, recall, f1)
+                            }
+                            computed_score &lt;&lt;- scores
+                            return(list(score = scores,  failures = failures))
+                      }
+                  )
+       )
 model = naiveBayes()
 model$fit(X=bow, y=author_labels)
-#model$predict(&quot;Hello my name is pavlo what about you?&quot;)</code></pre>
+result &lt;- model$score(X_test=X_test, y_test=y_test)</code></pre>
+<pre class="r"><code>model$computed_score</code></pre>
+<pre><code>##                          Class   TP  FP  FN Precision    Recall        F1
+## 1               Edgar Alan Poe 1951 343 423 0.8504795 0.8218197 0.8359040
+## 2                 HP Lovecraft 1354 227 307 0.8564200 0.8151716 0.8352869
+## 3 Mary Wollstonecraft Shelley  1594 405 245 0.7973987 0.8667754 0.8306410</code></pre>
+<p>Here are a few sentences that failed to classify correctly:</p>
+<pre class="r"><code>for (i in 1:10) {
+  print(result$failures[[i]])
+}</code></pre>
+<pre><code>## [1] &quot;Now he was no less a fanatic, but his desire to speak had conquered his resentment, and he had written me imperatively in a hand I could scarcely recognise.&quot;
+## [1] &quot;I attracted my brother&#39;s attention by signs, pointed to the floating barrels that came near us, and did everything in my power to make him understand what I was about to do.&quot;
+## [1] &quot;I reflected that many difficulties might still lie in the path of my preservation which only extreme exertion on my part would be able to surmount.&quot;
+## [1] &quot;But in the cosmos there is balm as well as bitterness, and that balm is nepenthe.&quot;
+## [1] &quot;You&#39;ll never know what the world has escaped.&quot;
+## [1] &quot;Dr. Halsey in particular had distinguished himself in sacrificing service, applying his extreme skill with whole hearted energy to cases which many others shunned because of danger or apparent hopelessness.&quot;
+## [1] &quot;Sometimes I could not prevail on myself to enter my laboratory for several days, and at other times I toiled day and night in order to complete my work.&quot;
+## [1] &quot;I pointed out that the barbarous Vascones were at best turbulent and uncertain, so that skirmishes with them were inevitable sooner or later whichever course we might take; that they had not in the past proved dangerous adversaries to our legions, and that it would ill become the representatives of the Roman People to suffer barbarians to interfere with a course which the justice and prestige of the Republic demanded.&quot;
+## [1] &quot;The young husband was frantic with grief but circumstances imperatively forbade the deferring his voyage to New York.&quot;
+## [1] &quot;A spectator would have thought of Francis and Charles.&quot;</code></pre>
 </div>
 <div id="measure-effectiveness-of-your-classifier" class="section level2">
 <h2>Measure effectiveness of your classifier</h2>

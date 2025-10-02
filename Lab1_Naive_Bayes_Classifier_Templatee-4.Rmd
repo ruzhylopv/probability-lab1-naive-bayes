@@ -1,3 +1,8 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
 # nolint: quotes_linter.
 ---
 editor_options:
@@ -15,9 +20,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Work breakdown
 
--   *Name1 Surname1*:
--   *Name2 Surname2*:
--   *Name3 Surname3*:
+-   *Pavlo Ruzhylo*: Data preprocessing, model fitting, measurements of effectiveness of a model.
+-   *Ivan Polianskyy*: Data visualization
+-   *Maksym Matseliukh*: Conclusions
 
 ## Introduction
 
@@ -61,32 +66,11 @@ examples!**
 
 There are 5 datasets uploaded on the cms (data.zip)
 
-To determine your variant, take your team number from the list of teams
-on cms and take *mod 5* - this is the number of your data set.
-
+Our dataset:
 -   **0 - authors** This data set consists of citations of three famous
     writers: Edgar Alan Poe, Mary Wollstonecraft Shelley and HP
     Lovecraft. The task with this data set is to classify a piece of
     text with the author who was more likely to write it.
-
--   **1 - discrimination** This data set consists of tweets that have
-    discriminatory (sexism or racism) messages or of tweets that are of
-    neutral mood. The task is to determine whether a given tweet has
-    discriminatory mood or does not.
-
--   **2 - fake news** This data set contains data of American news: a
-    headline and an abstract of the article. Each piece of news is
-    classified as fake or credible. The task is to classify the news
-    from test.csv as credible or fake.
-
--   **3 - sentiment** All the text messages contained in this data set
-    are labeled with three sentiments: positive, neutral or negative.
-    The task is to classify some text message as the one of positive
-    mood, negative or neutral.
-
--   **4 - spam** This last data set contains SMS messages classified as
-    spam or non-spam (ham in the data set). The task is to determine
-    whether a given message is spam or non-spam.
 
 Each data set consists of two files: *train.csv* and *test.csv*. The
 first one is used to find the probabilities of the corresponding classes
@@ -95,15 +79,11 @@ it is crucial to randomly split your data into training and testing
 parts to test the classifierʼs possibilities on the unseen data.
 
 ```{r}
-# here goes a list of recommended libraries,
-# though you may install other ones if they are needed
 library(tidytext)
 library(readr)
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-
-library(SnowballC)
 ```
 
 ## Outline of the work
@@ -134,20 +114,7 @@ library(SnowballC)
     <https://machinelearningmastery.com/gentle-introduction-bag-words-model/>
     you can find general introduction to the bag-of-words model and
     examples on to create it.
--   It is highly recommended to get familiar with R dataframes, it would
-    make the work much easier to do.
--   Useful links:
-    -   <https://steviep42.github.io/webscraping/book/bagofwords.html#tidytext> -
-        example of using *tidytext* to count frequencies of the words.
-    -   Basics of Text Mining in R:
-        <http://rstudio-pubs-static.s3.amazonaws.com/256588_57b585da6c054349825cba46685d8464.html>
-        . Note that it also includes an example on how to create a bag
-        of words from your text document.
 
-```{r}
-list.files(getwd())
-list.files("data/0-authors")
-```
 
 ```{r}
 test_path <- "data/0-authors/test.csv"
@@ -162,30 +129,18 @@ splitted_stop_words <- splitted_stop_words[[1]]
 ```
 ```{r}
 train <-  read.csv(file = train_path, stringsAsFactors = FALSE)
-test <-  read.csv(file = test_path, stringsAsFactors = FALSE)
+test <-  read.csv(file = test_path, stringsAsFactors = FALSE, quote="\"")
 ```
 
 ```{r}
 # note the power functional features of R bring us! 
-
-
-    # The vocabulary is now 22212 unique words long!
-    # That is why we decided to apply the stemming algorithm.
 tidy_text <- unnest_tokens(train[, ], "splitted", 'text', token="words") %>%
     filter(!splitted %in% splitted_stop_words)
-    len_of_vocab_before_stemming <- length(unique(tidy_text$splitted))
 
-
-#    tidy_text <- tidy_text %>% mutate(stemmed = wordStem(splitted, #language="en"))
-#    len_of_vocab_after_stemming <- length(unique(tidy_text$stemmed))
-
-#    cat("Vocabulary before stemming:", len_of_vocab_before_stemming, "\n")
-#    cat("Vocabulary after stemming:", len_of_vocab_after_stemming, "\n")
-#    cat("The decrease:", len_of_vocab_before_stemming - #len_of_vocab_after_stemming, "\n")
-head(tidy_text)
+X_test <- test$text
+y_test <- test$author
 ```
-The vocabulary without using the stemming algorithm (See https://machinelearningmastery.com/gentle-introduction-bag-words-model/) \\
-was 22211 words. Now we reduced it to 13479 using SnowballC library stemming algorithm
+
 ```{r}
 #Converting each message into bag of words:
 vocabulary <- unique(tidy_text$splitted)
@@ -202,34 +157,18 @@ bow <- bow %>%
     values_fill = list(n = 0),
     names_repair="unique"
   )
-head(bow)
+
 
 ```
 
 ## Data visualization
 
-```
-{r}
-word_freq <- tidy_text %>%
-  group_by(author, splitted) %>%
-  summarise(freq = n(), .groups = "drop") %>%
-  arrange(author, desc(freq))
-  
-  
-  
-```
-Each time you work with some data, you need to understand it before you
-start processing it. R has very powerful tools to make nice plots and
-visualization. Show what are the most common words for negative and
-positive examples as a histogram, word cloud etc. Be creative!
+
 
 ## Classifier implementation
 
 ```{r}
 naiveBayes <- setRefClass("naiveBayes",
-                          
-       # here it would be wise to have some vars to store intermediate result
-       # frequency dict etc. Though pay attention to bag of words! 
        fields = list(
          class_priors = "table",
          #Word probabilities -> probabilities of words given class.
@@ -243,7 +182,10 @@ naiveBayes <- setRefClass("naiveBayes",
          vocabulary = "character",
         
         #A number of all words in training data used to find P(feature)
-        total_words_in_X = "numeric"
+        total_words_in_X = "numeric",
+        
+        computed_score = "data.frame"
+        
        ),
        methods = list(
                     # prepare your training data as X - bag of words for each of your
@@ -305,25 +247,64 @@ naiveBayes <- setRefClass("naiveBayes",
                         }
                         
                         predicted_class <- names(which.max(probs_per_class))
-                        print(probs_per_class)
                         return(predicted_class)
 
                     }
                   ,
                                       
-                                      # score you test set so to get the understanding how well you model
-                                      # works.
-                                      # look at f1 score or precision and recall
-                                      # visualize them 
-                                      # try how well your model generalizes to real world data! 
+
                       score = function(X_test, y_test)
                       {
-                           # TODO
+                            confusion <- matrix(0, nrow = 3, ncol = 3)
+                            rownames(confusion) <- c("Edgar Alan Poe", "HP Lovecraft", "Mary Wollstonecraft Shelley ")
+                            colnames(confusion) <- c("Edgar Alan Poe", "HP Lovecraft", "Mary Wollstonecraft Shelley ")
+                            failures <- vector("list", length(X_test))
+                            count <- 0
+                            for (i in seq_along(X_test)) {
+                                pred <- predict(X_test[i])
+                                true <- y_test[i]
+                                confusion[true, pred] <- confusion[true, pred] + 1
+                                if (pred != true) {
+                                    count <- count + 1
+                                    failures[[count]] <- X_test[i]
+                                }
+                            }
+                            
+                            confusion
+                            
+                            scores <- data.frame(
+                              Class=rownames(confusion),
+                              TP=0, FP=0, FN=0,
+                              Precision=0, Recall=0, F1=0)
+                            total <- sum(confusion)
+                            
+                            for (i in 1:3) {
+                              tp <- confusion[i, i]
+                              fp <- sum(confusion[-i, i])
+                              fn <- sum(confusion[i, -i])
+                              precision <- tp / (tp + fp)
+                              recall <- tp / (tp + fn)
+                              f1 <- (2*precision*recall /(precision+recall))
+                              scores[i, 2:ncol(scores)] <- c(tp, fp, fn, precision, recall, f1)
+                            }
+                            computed_score <<- scores
+                            return(list(score = scores,  failures = failures))
                       }
-                  ))
-
+                  )
+       )
 model = naiveBayes()
 model$fit(X=bow, y=author_labels)
+result <- model$score(X_test=X_test, y_test=y_test)
+```
+```{r}
+model$computed_score
+```
+Here are a few sentences that failed to classify correctly:
+```{r}
+for (i in 1:10) {
+  print(result$failures[[i]])
+}
+
 ```
 
 ## Measure effectiveness of your classifier
