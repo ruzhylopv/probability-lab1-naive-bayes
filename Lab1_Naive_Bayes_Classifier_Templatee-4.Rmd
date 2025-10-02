@@ -150,8 +150,8 @@ list.files("data/0-authors")
 ```
 
 ```{r}
-test_path <- "data/0-authors/test.csv"
-train_path <- "data/0-authors/train.csv"
+test_path <- "test.csv"
+train_path <- "train.csv"
 
 stop_words <- read_file("stop_words.txt")
 # https://stackoverflow.com/questions/27195912/why-does-strsplit-return-a-list
@@ -227,105 +227,248 @@ positive examples as a histogram, word cloud etc. Be creative!
 
 ```{r}
 naiveBayes <- setRefClass("naiveBayes",
-                          
-       # here it would be wise to have some vars to store intermediate result
-       # frequency dict etc. Though pay attention to bag of words! 
-       fields = list(
-         class_priors = "table",
-         #Word probabilities -> probabilities of words given class.
-         #Structure:
-         #HP Lovecraft
-         #hello   free  money    now 
-        #  0.25   0.25   0.40   0.10
-         word_probabilities = "list",
-        
-        #A vector of all words available in the training data
-         vocabulary = "character",
-        
-        #A number of all words in training data used to find P(feature)
-        total_words_in_X = "numeric"
-       ),
-       methods = list(
-                    # prepare your training data as X - bag of words for each of your
-                    # messages and corresponding label for the message encoded as 0 or 1 
-                    # (binary classification task)
-                    fit = function(X, y)
-                    {
-                      X <- X[order(X$id...1), ]
-                      y <- y[order(y$id), ]
-                      
-                      stopifnot(all(X$id...1 == y$id))
-                      
-                      vocabulary <<- setdiff(colnames(X), "id...1")
-                      class_counts <- table(y$author)
-                      total_words_in_X <<- sum(colSums(X[, 2:ncol(X)]))
+  fields = list(
+    class_priors = "table",
+    word_probabilities = "list",
+    vocabulary = "character",
+    total_words_in_X = "numeric"
+  ),
+  methods = list(
+    fit = function(X, y) {
+      X <- X[order(X$id...1), ]
+      y <- y[order(y$id), ]
+      stopifnot(all(X$id...1 == y$id))
+      vocabulary <<- setdiff(colnames(X), "id...1")
+      class_counts <- table(y$author)
+      total_words_in_X <<- sum(colSums(X[, 2:ncol(X)]))
+      class_priors <<- class_counts / sum(class_counts)
+      word_probabilities <<- list()
+      for (class in names(class_counts)) {
+        X_class <- X[y$author == class, , drop = FALSE]
+        word_counts <- colSums(X_class[, 2:ncol(X_class)])
+        word_counts <- word_counts + 1
+        total_count <- sum(word_counts)
+        probs <- word_counts / total_count
+        word_probabilities[[class]] <<- probs
+      }
+    },
 
-   
-                      class_priors <<- class_counts / sum(class_counts)
-                      word_probabilities <<- list()
-                        for (class in names(class_counts)) {
-                          # subset X where y == class
-                          X_class <- X[y$author == class, , drop = FALSE]
-                          # sum counts of each word in that class
-                          word_counts <- colSums(X_class[, 2:ncol(X_class)])
-                          
-                          # add +1 to each count to avoid multiplying by 0
-                          word_counts <- word_counts + 1
-                          total_count <- sum(word_counts)
-                          
+    predict = function(message = NULL, counts_vec = NULL, return_scores = FALSE) {
+  # Provide either raw message (string) or counts_vec (named numeric aligned with vocabulary).
+  if (is.null(message) && is.null(counts_vec)) stop("Provide either message (string) or counts_vec (named numeric).")
 
-                          probs <- word_counts / total_count
-                          
-                          word_probabilities[[class]] <<- probs
-                    }
-                      
-                      
-                         
-                    },
-                    
-                    # return prediction for a single message 
-                      predict = function(message) {
-                        message_df <- data.frame(text = message, stringsAsFactors = FALSE)
-                        tidy_message <- message_df %>%
-                          unnest_tokens(splitted, text, token = "words") %>%
-                          filter(!(splitted %in% splitted_stop_words)) %>%
-                          filter((splitted %in% vocabulary))
-                        probs_per_class <- c()
-                        
-                        for (class in names(class_priors)) {
-                          p_class <- class_priors[class]
-                          p_observation_given_class <- 1
-                          
-                          for (word in tidy_message$splitted) {
-                            p_w_given_class <- word_probabilities[[class]][word]
-                            p_observation_given_class <- p_observation_given_class * p_w_given_class
-                          }
-                          
-                          probs_per_class[class] <- (p_class * (p_observation_given_class))
-                        }
-                        
-                        predicted_class <- names(which.max(probs_per_class))
-                        print(probs_per_class)
-                        return(predicted_class)
+  # Build counts_vec aligned to model vocabulary
+  if (!is.null(message)) {
+    toks <- tolower(message)
+    toks <- gsub("[^a-z0-9\\s]", " ", toks)
+    toks <- unlist(strsplit(toks, "\\s+"))
+    toks <- toks[toks != ""]
+    toks <- toks[!(toks %in% splitted_stop_words)]
+    if (length(toks) == 0) return(NA)
+    cnts <- table(toks)
+    common <- intersect(names(cnts), vocabulary)
+    counts_vec <- numeric(length(vocabulary)); names(counts_vec) <- vocabulary
+    if (length(common) > 0) counts_vec[common] <- as.numeric(cnts[common])
+  } else {
+    if (!is.numeric(counts_vec)) stop("counts_vec must be numeric named vector.")
+    tmp <- numeric(length(vocabulary)); names(tmp) <- vocabulary
+    common <- intersect(names(counts_vec), vocabulary)
+    if (length(common) > 0) tmp[common] <- counts_vec[common]
+    counts_vec <- tmp
+  }
 
-                    }
-                  ,
-                                      
-                                      # score you test set so to get the understanding how well you model
-                                      # works.
-                                      # look at f1 score or precision and recall
-                                      # visualize them 
-                                      # try how well your model generalizes to real world data! 
-                      score = function(X_test, y_test)
-                      {
-                           # TODO
-                      }
-                  ))
+  # prepare log-probabilities for classes (local, computed from word_probabilities)
+  if (length(word_probabilities) == 0) stop("word_probabilities is empty. Run fit() first.")
+  classes <- names(word_probabilities)
+  priors <- as.numeric(class_priors); names(priors) <- names(class_priors)
 
-model = naiveBayes()
-model$fit(X=bow, y=author_labels)
+  logp_by_class <- lapply(classes, function(cl) {
+    wp <- word_probabilities[[cl]]
+    # align to vocabulary (fill missing with tiny value)
+    wpv <- wp[vocabulary]
+    missing <- is.na(wpv)
+    if (any(missing)) wpv[missing] <- 1e-12
+    wpv[wpv <= 0] <- 1e-12
+    log(wpv)
+  })
+  names(logp_by_class) <- classes
+
+  # compute log-scores
+  scores <- numeric(length(classes)); names(scores) <- classes
+  for (cl in classes) {
+    lp <- log(priors[cl])
+    scores[cl] <- lp + as.numeric(counts_vec %*% logp_by_class[[cl]])
+  }
+
+  # normalize to probabilities (stable)
+  mx <- max(scores)
+  probs_raw <- exp(scores - mx)
+  probs_norm <- probs_raw / sum(probs_raw)
+
+  pred <- names(which.max(probs_norm))
+  if (return_scores) return(list(pred = pred, probs = probs_norm, logscores = scores))
+  return(pred)
+},
+
+
+    score = function(X_test, y_test) {
+      id_col_candidates <- grep("^id", colnames(X_test), ignore.case = TRUE, value = TRUE)
+      id_col <- if (length(id_col_candidates) > 0) id_col_candidates[1] else colnames(X_test)[1]
+      ids <- as.character(X_test[[id_col]])
+      preds <- character(length(ids))
+      classes <- names(class_priors)
+      priors <- as.numeric(class_priors); names(priors) <- names(class_priors)
+
+      if ("text" %in% colnames(X_test)) {
+        for (i in seq_along(ids)) {
+          preds[i] <- .self$predict(message = as.character(X_test$text[i]))
+        }
+      } else {
+        common_vocab <- intersect(vocabulary, colnames(X_test))
+        if (length(common_vocab) == 0) stop("No vocabulary words found in X_test columns. Ensure X_test has same word columns as training bow.")
+        counts_mat <- as.matrix(X_test[, common_vocab, drop = FALSE])
+        logp_by_class <- list()
+        for (cl in classes) {
+          wp <- word_probabilities[[cl]]
+          wp_vec <- wp[common_vocab]
+          missing <- is.na(wp_vec)
+          if (any(missing)) wp_vec[missing] <- 1e-12
+          wp_vec[wp_vec <= 0] <- 1e-12
+          logp_by_class[[cl]] <- log(wp_vec)
+        }
+        for (i in seq_len(nrow(counts_mat))) {
+          counts_vec <- as.numeric(counts_mat[i, ])
+          scores <- sapply(classes, function(cl) {
+            log(priors[cl]) + sum(counts_vec * logp_by_class[[cl]])
+          })
+          mx <- max(scores)
+          probs_raw <- exp(scores - mx)
+          probs_norm <- probs_raw / sum(probs_raw)
+          preds[i] <- names(which.max(probs_norm))
+        }
+      }
+
+      if (!("id" %in% colnames(y_test))) stop("y_test must have column 'id'.")
+      if (!("author" %in% colnames(y_test))) stop("y_test must have column 'author'.")
+      gold <- y_test$author[match(ids, as.character(y_test$id))]
+      cm <- table(pred = preds, truth = gold)
+      accuracy <- sum(preds == gold, na.rm = TRUE) / length(gold)
+      classes_all <- sort(unique(c(as.character(gold), as.character(preds))))
+      metrics <- data.frame(class = classes_all, precision = NA_real_, recall = NA_real_, F1 = NA_real_, stringsAsFactors = FALSE)
+      for (j in seq_along(classes_all)) {
+        cl <- classes_all[j]
+        tp <- sum(preds == cl & gold == cl, na.rm = TRUE)
+        fp <- sum(preds == cl & gold != cl, na.rm = TRUE)
+        fn <- sum(preds != cl & gold == cl, na.rm = TRUE)
+        prec <- if ((tp + fp) == 0) NA else tp / (tp + fp)
+        rec  <- if ((tp + fn) == 0) NA else tp / (tp + fn)
+        f1   <- if (is.na(prec) || is.na(rec) || (prec + rec) == 0) NA else 2 * prec * rec / (prec + rec)
+        metrics$precision[j] <- prec
+        metrics$recall[j] <- rec
+        metrics$F1[j] <- f1
+      }
+      preds_df <- data.frame(id = ids, pred = preds, truth = gold, stringsAsFactors = FALSE)
+      return(list(confusion = cm, accuracy = accuracy, per_class = metrics, preds = preds_df))
+    }
+  )
+)
+
 ```
 
+```{r}
+# ==== підготовка bow_test (окремим чанком, ПІСЛЯ визначення класу) ====
+library(tidytext); library(dplyr); library(tidyr)
+
+test <- read.csv("test.csv", stringsAsFactors = FALSE)
+
+tokens_test <- test %>%
+  select(id, text, author) %>%
+  unnest_tokens(splitted, text, token = "words") %>%
+  filter(!(splitted %in% splitted_stop_words)) %>%
+  mutate(splitted = tolower(splitted))
+
+bow_test <- tokens_test %>%
+  count(id, splitted) %>%
+  pivot_wider(names_from = splitted, values_from = n, values_fill = list(n = 0), names_repair = "unique")
+
+# додати відсутні колонки з model$vocabulary
+missing_cols <- setdiff(model$vocabulary, colnames(bow_test))
+if (length(missing_cols) > 0) {
+  for (w in missing_cols) bow_test[[w]] <- 0
+}
+# переставити колонки: id-перша, потім vocabulary
+id_col_candidates <- grep("^id", colnames(bow_test), ignore.case = TRUE, value = TRUE)
+id_col <- if (length(id_col_candidates) > 0) id_col_candidates[1] else colnames(bow_test)[1]
+bow_test <- bow_test[, c(id_col, model$vocabulary)]
+
+author_labels_test <- test %>% select(id, author)
+
+```
+
+```{r}
+# ------------------ Fix missing ids in bow_test (вставити ПІСЛЯ створення bow_test) ------------------
+
+# 1) знайти назву id-стовпця у bow_test (наприклад "id" або "id...1")
+id_col_candidates <- grep("^id", colnames(bow_test), ignore.case = TRUE, value = TRUE)
+id_col <- if (length(id_col_candidates) > 0) id_col_candidates[1] else colnames(bow_test)[1]
+
+# 2) отримати всі id, яких очікуємо у тесті (з author_labels_test)
+expected_ids <- as.character(author_labels_test$id)
+
+# 3) які id відсутні у bow_test
+present_ids <- as.character(bow_test[[id_col]])
+missing_ids <- setdiff(expected_ids, present_ids)
+
+# 4) якщо є відсутні — додати рядки з нулями по всьому словнику (model$vocabulary)
+if (length(missing_ids) > 0) {
+  message("Found ", length(missing_ids), " missing id(s). Adding zero-rows for them to bow_test.")
+  # створюємо data.frame з нулями: кількість рядків = length(missing_ids),
+  # кількість стовпців = length(model$vocabulary) + 1 (для id)
+  zero_mat <- matrix(0, nrow = length(missing_ids), ncol = length(model$vocabulary))
+  zero_df <- as.data.frame(zero_mat, stringsAsFactors = FALSE)
+  colnames(zero_df) <- model$vocabulary
+
+  # додати колонку id з правильним ім'ям (id_col)
+  zero_df[[id_col]] <- missing_ids
+
+  # переставити так, щоб id-стовпець був першим
+  zero_df <- zero_df[, c(id_col, model$vocabulary)]
+
+  # привести типи колонок до таких же як у bow_test (optional but safe)
+  # Переконаємось, що колонки-багато не конвертують факторами
+  for (nm in colnames(zero_df)) {
+    if (nm %in% colnames(bow_test)) {
+      # привести клас (numeric/character) як у bow_test
+      class(zero_df[[nm]]) <- class(bow_test[[nm]])
+    }
+  }
+
+  # додати нові рядки в bow_test
+  bow_test <- rbind(bow_test, zero_df)
+
+  # опціонально: відсортувати рядки за id щоб зручно було дивитись
+  bow_test <- bow_test[order(as.character(bow_test[[id_col]])), , drop = FALSE]
+
+} else {
+  message("No missing ids found in bow_test.")
+}
+
+# 5) переконатися: тепер bow_test містить усі expected_ids
+stopifnot(all(expected_ids %in% as.character(bow_test[[id_col]])))
+# -------------------------------------------------------------------------------
+
+```
+
+```{r}
+model <- naiveBayes$new()
+model$fit(X = bow, y = author_labels)   # тренуємо на bow (припускаю, що bow вже створено раніше)
+res <- model$score(X_test = bow_test, y_test = author_labels_test)
+print(res$accuracy)
+print(res$confusion)
+print(res$per_class)
+head(res$preds[res$preds$pred != res$preds$truth, ], 20)
+
+```
 ## Measure effectiveness of your classifier
 
 -   Note that accuracy is not always a good metric for your classifier.
