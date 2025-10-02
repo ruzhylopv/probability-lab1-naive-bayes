@@ -163,7 +163,27 @@ bow <- bow %>%
 
 ## Data visualization
 
+```{r}
 
+word_freq <- tidy_text %>%
+  group_by(author, splitted) %>%
+  summarise(freq = n(), .groups = "drop") %>%
+  arrange(author, desc(freq))
+
+
+overall_word_freq <- tidy_text %>%
+  count(splitted, sort = TRUE) %>%
+  head(15) #<<<<<-------???????????
+
+
+ggplot(overall_word_freq, aes(x = reorder(splitted, n), y = n)) +
+  geom_col(fill = "steelblue", alpha = 0.7) +
+  coord_flip() +
+  labs(title = "Top 15 Most Common Words in Cleaned Training Data",
+       x = "Words", y = "Frequency") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"))
+```
 
 ## Classifier implementation
 
